@@ -1,0 +1,46 @@
+v_max = 0.25
+track = 0.5
+omega_max = 0.6
+eye_m = 2.0
+mu = { rock = 1.0, sand = 0.75, dust = 0.85, ice = 0.5 }
+slip_sigma = { rock = 0.03, sand = 0.12, dust = 0.06, ice = 0.15 }
+k_up = 1.5
+k_down = 0.5
+fs_max = 1.25
+sink_slip = 0.5
+sink_ticks = 8
+unstick_u = -0.3
+unstick_ticks = 6
+unstick_back = 0.5
+tip_roll = 0.58
+tip_pitch = 0.70
+cam_period = 8
+
+[energy]
+base = 0.0002
+motor = 0.0004
+motor_slope = 2.0
+heater = 0.0001
+drill = 0.0015
+spectro = 0.003
+solar = 0.0021
+panel_base = 0.75
+cutoff = 0.15
+resume = 0.40
+safe_recharge = 0.40
+tip_cost = 0.1
+
+[camera]
+acuity = [[8, 6], [8, 6], [32, 20], [80, 50], [160, 100], [160, 100]]
+radius = [8, 8, 14, 24, 40, 40]
+slices = [24, 24, 40, 64, 100, 100]
+fov_tan = 0.7
+horizon = 0.35
+scale = 0.9
+near = 0.6
+noise_day = 0.25
+noise_night = 0.6
+noise_storm = 0.8
+noise_offline = 1.2
+night_elev = 0.05
+seen_radius = 1.5

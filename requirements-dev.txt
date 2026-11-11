@@ -1,0 +1,5 @@
+# Development and tests (not used by the workflow). Exact versions.
+# Install requirements.lock first (hashed), then this file (unhashed; kept separate on purpose).
+pytest==9.2.0
+hypothesis==6.170.15
+PyYAML==6.0.3

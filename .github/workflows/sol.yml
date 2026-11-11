@@ -1,0 +1,71 @@
+name: sol
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        options: [sol, check, refs, restore]
+        default: sol
+      checkpoint:
+        type: string
+        default: ""
+      fault:
+        type: choice
+        options: [none, corrupt, nan]
+        default: none
+permissions:
+  contents: write
+concurrency:
+  group: sol-0
+  cancel-in-progress: false
+jobs:
+  sol:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: src
+      PYTHONHASHSEED: "0"
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      TZ: UTC
+      MODE: ${{ inputs.mode || 'sol' }}
+      CHECKPOINT: ${{ inputs.checkpoint || '' }}
+      FAULT: ${{ inputs.fault || 'none' }}
+      SOL0_TRIAL: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: install
+        run: |
+          python -m pip install --no-deps --only-binary=:all: --require-hashes -r requirements.lock
+      - name: validate inputs
+        run: python tools/ci/validate_inputs.py "$MODE" "$CHECKPOINT" "$FAULT"
+      - name: fetch state
+        run: bash tools/ci/fetch_state.sh _in "$RUNNER_TEMP/state_sha"
+      - name: refs
+        if: env.MODE == 'refs'
+        run: python -m rover refs --out "$RUNNER_TEMP/refs.json" && python tools/ci/emit_refs.py "$RUNNER_TEMP/refs.json"
+      - name: check
+        if: env.MODE == 'check'
+        run: python -m rover check --dir _in
+      - name: sol
+        if: env.MODE == 'sol'
+        run: python -m rover sol --in _in --out _out --main . --now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --tags "$RUNNER_TEMP/tags.txt" --repo "$GITHUB_REPOSITORY" --fault "$FAULT"
+      - name: restore
+        if: env.MODE == 'restore'
+        run: python -m rover restore --in _in --out _out --checkpoint "$CHECKPOINT" --now "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+      - name: check output
+        if: env.MODE == 'sol' || env.MODE == 'restore'
+        run: python -m rover check --dir _out --prev _in
+      - name: publish
+        if: env.MODE == 'sol' || env.MODE == 'restore'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash tools/ci/publish.sh _out "$RUNNER_TEMP/state_sha" "$RUNNER_TEMP/tags.txt"

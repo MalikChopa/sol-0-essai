@@ -1,0 +1,54 @@
+recal_factor = 0.9
+recal_second = 5
+consolidation_reminder = 28
+no_progress_cells = 2
+no_progress_sols = 3
+energy_min_cells = 20
+
+[[stage]]
+id = 0
+name = "AWAKENING"
+metric = "couples"
+threshold = 200
+min = 3
+target = 6
+
+[[stage]]
+id = 1
+name = "I CAN MOVE"
+metric = "r2_stable"
+threshold = 0.70
+min = 6
+target = 6
+
+[[stage]]
+id = 2
+name = "LEARNING TO DRIVE"
+metric = "battery"
+threshold = 16
+min = 60
+target = 84
+
+[[stage]]
+id = 3
+name = "ENERGY"
+metric = "no_breakdown_streak"
+threshold = 20
+min = 59
+target = 84
+
+[[stage]]
+id = 4
+name = "SAMPLING"
+metric = "novel"
+threshold = 10
+min = 59
+target = 84
+
+[[stage]]
+id = 5
+name = "ANALYSIS"
+metric = "ari_stable"
+threshold = 10
+min = 240
+target = 360

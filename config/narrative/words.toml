@@ -1,0 +1,10 @@
+# Words substituted for fact values of type str (SPEC 8.1). One table per fact name; the same keys in fr and en.
+# Terrain words carry their article so that a template can write "sur {slip_worst_terrain}" / "on {slip_worst_terrain}".
+
+[slip_worst_terrain]
+fr = { rock = "la roche", sand = "le sable", dust = "la poussière", ice = "la glace" }
+en = { rock = "rock", sand = "sand", dust = "dust", ice = "ice" }
+
+[r2_worst_terrain]
+fr = { rock = "la roche", sand = "le sable", dust = "la poussière", ice = "la glace" }
+en = { rock = "rock", sand = "sand", dust = "dust", ice = "ice" }

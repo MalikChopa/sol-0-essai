@@ -1,0 +1,85 @@
+babble_segment = 20
+babble_amp = 1.0
+explore_amp = 0.15
+target_dist = 30
+target_sector_r = 40
+target_period = 300
+arrive_r = 1.5
+sun_search_r = 12
+
+[m0]
+n_in = 24
+hidden = 16
+n_out = 2
+w2_init = 0.1
+
+[m1]
+n_in = 5
+hidden = 16
+n_out = 3
+lr = 0.01
+batch = 64
+steps_learn = 200
+steps_maint = 50
+buffer = 4000
+holdout_mod = 5
+
+[m2]
+k = 8
+sectors = 8
+eta = 0.002
+eta_decay_sols = 50
+
+[m3]
+n_in = 8
+hidden = 8
+n_out = 3
+hysteresis = 0.1
+step_ticks = 20
+days = 4
+panne_pen = 30.0
+low_pen = 5.0
+
+[es]
+pop = 48
+sigma = 0.05
+lr = 0.03
+beta1 = 0.9
+beta2 = 0.999
+eps = 1e-8
+l2 = 0.005
+gens_learn = 12
+gens_maint = 2
+pop_maint = 24
+episodes = 2
+episodes_maint = 1
+ticks = 160
+start_radius = 64
+target_range = [20, 40]
+energy_pen = 0.002
+tip_pen = 2.0
+stuck_pen = 1.0
+arrive_bonus = 5.0
+
+[battery]
+courses = 20
+region = 512
+target_dist = 30
+max_ticks = 300
+regress = 0.8
+regress_window = 5
+regress_consecutive = 2
+every_consolidation = 4
+
+[m4]
+hidden = 8
+tau = 0.15
+drill_ticks = 40
+drill_pen = 0.05
+
+[m5]
+k_max = 15
+new_dist = 0.25
+lloyd_iters = 10
+buffer = 4000
+name_min = 5

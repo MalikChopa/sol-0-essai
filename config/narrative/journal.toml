@@ -1,0 +1,511 @@
+# Journal templates (SPEC 8.1, 8.3). One [[line]] per template id.
+#   slot    : "summary" (first matching line of the stage), "learn" (idem), "extra" (all matching, by prio, at most 3)
+#   stage   : stages where a summary/learn line applies (absent = any; stages above 5 use the stage-5 tone)
+#   when    : conditions on facts, all must hold. "k" truthy, "!k" falsy or None, "k>N" "k>=N" "k<N" "k<=N" "k==N",
+#             "k=text" (string equality), "k:text" (text in the list k). A comparison with None is false.
+#   needs   : facts that must not be None; every marker of the text must be in needs or be a derived marker (see journal.py)
+#   prio    : extras, smaller first. replaces : ids of lines this one supersedes when it matches.
+#   fr, en  : same number of variants; variant = u64(derive(seed, "journal", sol, crc32(id))) mod len.
+# Markers: {name} or {name:decimals}. Percentages: FR "{x} %", EN "{x}%".
+# Tone: naive for stages 0-1, technical 2-4, scientific 5 and above. Every adjective, cause or comparison is carried by `when`/`needs`.
+
+# ---------------------------------------------------------------- summary
+[[line]]
+id = "summary.idle"
+slot = "summary"
+when = ["awake_ticks==0"]
+needs = ["awake_ticks"]
+fr = ["Je suis resté en veille pendant tout ce sol : aucun pas de temps d'éveil."]
+en = ["I stayed on standby for this whole sol: no awake time steps."]
+
+[[line]]
+id = "summary.s0"
+slot = "summary"
+stage = [0]
+needs = ["couples_sol", "distance_m"]
+fr = ["J'ai envoyé {couples_sol} commandes au hasard à mes roues. Je me suis déplacé de {distance_m:0} m sans savoir pourquoi."]
+en = ["I sent {couples_sol} random commands to my wheels. I moved {distance_m:0} m without knowing why."]
+
+[[line]]
+id = "summary.s1"
+slot = "summary"
+stage = [1]
+needs = ["couples_sol", "distance_m"]
+fr = ["J'ai gardé en mémoire {couples_sol} essais de mes roues et j'ai avancé de {distance_m:0} m.",
+      "J'ai avancé de {distance_m:0} m et noté {couples_sol} essais de mes roues."]
+en = ["I kept {couples_sol} wheel trials in memory and moved {distance_m:0} m.",
+      "I moved {distance_m:0} m and noted {couples_sol} wheel trials."]
+
+[[line]]
+id = "summary.s2"
+slot = "summary"
+stage = [2]
+needs = ["distance_m", "awake_ticks"]
+fr = ["Parcours du sol : {distance_m:0} m en {awake_ticks} pas de temps d'éveil.",
+      "{distance_m:0} m parcourus, {awake_ticks} pas de temps d'éveil."]
+en = ["Distance covered this sol: {distance_m:0} m in {awake_ticks} awake time steps.",
+      "{distance_m:0} m covered, {awake_ticks} awake time steps."]
+
+[[line]]
+id = "summary.s3"
+slot = "summary"
+stage = [3]
+needs = ["distance_m", "awake_ticks"]
+fr = ["Distance : {distance_m:0} m en {awake_ticks} pas de temps d'éveil.",
+      "Éveillé pendant {awake_ticks} pas de temps, {distance_m:0} m parcourus."]
+en = ["Distance: {distance_m:0} m in {awake_ticks} awake time steps.",
+      "Awake for {awake_ticks} time steps, {distance_m:0} m covered."]
+
+[[line]]
+id = "summary.s4"
+slot = "summary"
+stage = [4]
+needs = ["distance_m", "awake_ticks"]
+fr = ["Distance : {distance_m:0} m en {awake_ticks} pas de temps d'éveil."]
+en = ["Distance: {distance_m:0} m in {awake_ticks} awake time steps."]
+
+[[line]]
+id = "summary.s5"
+slot = "summary"
+stage = [5]
+needs = ["distance_m", "awake_ticks"]
+fr = ["Mesures du sol : {distance_m:0} m parcourus, {awake_ticks} pas de temps d'éveil."]
+en = ["Measurements for this sol: {distance_m:0} m covered, {awake_ticks} awake time steps."]
+
+# ---------------------------------------------------------------- learn
+[[line]]
+id = "learn.s1.r2.terrain"
+slot = "learn"
+stage = [1]
+needs = ["r2", "r2_worst_terrain"]
+fr = ["Mon modèle prédit mes déplacements avec un R² de {r2:2}. Il se trompe surtout sur {r2_worst_terrain}."]
+en = ["My model predicts my movements with an R² of {r2:2}. It is mostly wrong on {r2_worst_terrain}."]
+
+[[line]]
+id = "learn.s1.r2"
+slot = "learn"
+stage = [1]
+needs = ["r2"]
+fr = ["Mon modèle prédit mes déplacements avec un R² de {r2:2}."]
+en = ["My model predicts my movements with an R² of {r2:2}."]
+
+[[line]]
+id = "learn.s2.battery.slip"
+slot = "learn"
+stage = [2]
+needs = ["battery_successes", "slip_worst_terrain"]
+fr = ["J'ai atteint {battery_successes} des {battery_n} cibles de test. J'ai surtout glissé sur {slip_worst_terrain}."]
+en = ["I reached {battery_successes} of the {battery_n} test targets. I slipped most on {slip_worst_terrain}."]
+
+[[line]]
+id = "learn.s2.battery"
+slot = "learn"
+stage = [2]
+needs = ["battery_successes"]
+fr = ["J'ai atteint {battery_successes} des {battery_n} cibles de test."]
+en = ["I reached {battery_successes} of the {battery_n} test targets."]
+
+[[line]]
+id = "learn.s3.nobreakdown"
+slot = "learn"
+stage = [3]
+when = ["!breakdowns"]
+needs = ["battery_min", "battery_min_hour", "breakdowns"]
+fr = ["Ma batterie est descendue à {battery_pct} % vers {battery_clock}. Aucune panne pendant ce sol."]
+en = ["My battery fell to {battery_pct}% around {battery_clock}. No breakdown during this sol."]
+
+[[line]]
+id = "learn.s3.breakdown1"
+slot = "learn"
+stage = [3]
+when = ["breakdowns==1"]
+needs = ["battery_min", "battery_min_hour", "breakdowns", "forced_sleep_ticks"]
+fr = ["Ma batterie est descendue à {battery_pct} % vers {battery_clock}. Une panne : {forced_sleep_ticks} pas de temps de veille forcée."]
+en = ["My battery fell to {battery_pct}% around {battery_clock}. One breakdown: {forced_sleep_ticks} time steps of forced standby."]
+
+[[line]]
+id = "learn.s3.breakdowns"
+slot = "learn"
+stage = [3]
+when = ["breakdowns>1"]
+needs = ["battery_min", "battery_min_hour", "breakdowns", "forced_sleep_ticks"]
+fr = ["Ma batterie est descendue à {battery_pct} % vers {battery_clock}. {breakdowns} pannes : {forced_sleep_ticks} pas de temps de veille forcée."]
+en = ["My battery fell to {battery_pct}% around {battery_clock}. {breakdowns} breakdowns: {forced_sleep_ticks} time steps of forced standby."]
+
+[[line]]
+id = "learn.s4.novel"
+slot = "learn"
+stage = [4]
+when = ["novel_vs_prev>=1"]
+needs = ["novel_vs_prev"]
+fr = ["Le dernier échantillon diffère de {novel_vs_prev} des échantillons précédents avec lesquels je l'ai comparé."]
+en = ["The latest sample differs from {novel_vs_prev} of the earlier samples it was compared with."]
+
+[[line]]
+id = "learn.s4.same"
+slot = "learn"
+stage = [4]
+when = ["novel_vs_prev==0"]
+needs = ["novel_vs_prev"]
+fr = ["Le dernier échantillon ne diffère d'aucun des échantillons précédents avec lesquels je l'ai comparé."]
+en = ["The latest sample is not different from any of the earlier samples it was compared with."]
+
+[[line]]
+id = "learn.s5.named"
+slot = "learn"
+stage = [5]
+when = ["new_names"]
+needs = ["spectra", "n_categories", "new_names"]
+fr = ["Je range mes {spectra} spectres en {n_categories} catégories. J'ai nommé la plus récente {new_name}."]
+en = ["I sort my {spectra} spectra into {n_categories} categories. I named the newest one {new_name}."]
+
+[[line]]
+id = "learn.s5.ari"
+slot = "learn"
+stage = [5]
+needs = ["spectra", "n_categories", "ari"]
+fr = ["Je range mes {spectra} spectres en {n_categories} catégories (ARI {ari:2})."]
+en = ["I sort my {spectra} spectra into {n_categories} categories (ARI {ari:2})."]
+
+[[line]]
+id = "learn.generic"
+slot = "learn"
+needs = ["stage", "stage_name"]
+fr = ["Stade {stage} : {stage_name}."]
+en = ["Stage {stage}: {stage_name}."]
+
+# ---------------------------------------------------------------- extras: restoration (prio 1)
+[[line]]
+id = "restore.corrupt.one"
+slot = "extra"
+prio = 1
+when = ["restore_cause=corrupt", "redone_n==1"]
+needs = ["restore_cause", "redone_sols"]
+fr = ["Une partie de ma mémoire était illisible. Je suis reparti de ma sauvegarde du sol {restored_sol} ; le sol {redone_first} est refait."]
+en = ["Part of my memory was unreadable. I restarted from my backup of sol {restored_sol}; sol {redone_first} is redone."]
+
+[[line]]
+id = "restore.corrupt"
+slot = "extra"
+prio = 1
+when = ["restore_cause=corrupt", "redone_n>1"]
+needs = ["restore_cause", "redone_sols"]
+fr = ["Une partie de ma mémoire était illisible. Je suis reparti de ma sauvegarde du sol {restored_sol} ; les sols {redone_first} à {redone_last} sont refaits."]
+en = ["Part of my memory was unreadable. I restarted from my backup of sol {restored_sol}; sols {redone_first} to {redone_last} are redone."]
+
+[[line]]
+id = "restore.nan.one"
+slot = "extra"
+prio = 1
+when = ["restore_cause=nan", "redone_n==1"]
+needs = ["restore_cause", "redone_sols"]
+fr = ["Ma mémoire contenait une valeur qui n'était pas un nombre. Je suis reparti de ma sauvegarde du sol {restored_sol} ; le sol {redone_first} est refait."]
+en = ["My memory held a value that was not a number. I restarted from my backup of sol {restored_sol}; sol {redone_first} is redone."]
+
+[[line]]
+id = "restore.nan"
+slot = "extra"
+prio = 1
+when = ["restore_cause=nan", "redone_n>1"]
+needs = ["restore_cause", "redone_sols"]
+fr = ["Ma mémoire contenait une valeur qui n'était pas un nombre. Je suis reparti de ma sauvegarde du sol {restored_sol} ; les sols {redone_first} à {redone_last} sont refaits."]
+en = ["My memory held a value that was not a number. I restarted from my backup of sol {restored_sol}; sols {redone_first} to {redone_last} are redone."]
+
+[[line]]
+id = "restore.manual.one"
+slot = "extra"
+prio = 1
+when = ["restore_cause=manual", "redone_n==1"]
+needs = ["restore_cause", "redone_sols"]
+fr = ["Une restauration manuelle a été demandée. Je suis reparti de ma sauvegarde du sol {restored_sol} ; le sol {redone_first} est refait."]
+en = ["A manual restore was requested. I restarted from my backup of sol {restored_sol}; sol {redone_first} is redone."]
+
+[[line]]
+id = "restore.manual"
+slot = "extra"
+prio = 1
+when = ["restore_cause=manual", "redone_n>1"]
+needs = ["restore_cause", "redone_sols"]
+fr = ["Une restauration manuelle a été demandée. Je suis reparti de ma sauvegarde du sol {restored_sol} ; les sols {redone_first} à {redone_last} sont refaits."]
+en = ["A manual restore was requested. I restarted from my backup of sol {restored_sol}; sols {redone_first} to {redone_last} are redone."]
+
+# ---------------------------------------------------------------- extras: firmware lock (prio 2), stage change (prio 3)
+[[line]]
+id = "lock"
+slot = "extra"
+prio = 2
+when = ["consolidation"]
+needs = ["consolidation"]
+fr = ["J'ai atteint le seuil du stade suivant, mais mon micrologiciel ne le connaît pas encore. J'attends une mise à jour."]
+en = ["I reached the threshold of the next stage, but my firmware does not know it yet. I am waiting for an update."]
+
+[[line]]
+id = "advance"
+slot = "extra"
+prio = 3
+when = ["advanced_to>=1"]
+needs = ["advanced_to", "stage_name"]
+fr = ["Je passe au stade {advanced_to} : {stage_name}."]
+en = ["I am moving on to stage {advanced_to}: {stage_name}."]
+
+# ---------------------------------------------------------------- extras: firsts (prio 4)
+[[line]]
+id = "first.move"
+slot = "extra"
+prio = 4
+when = ["firsts:first.move"]
+needs = ["awake_cells"]
+fr = ["C'est la première fois que je me déplace : {awake_cells:0} cellules parcourues éveillé."]
+en = ["This is the first time I have moved: {awake_cells:0} cells covered while awake."]
+
+[[line]]
+id = "first.image"
+slot = "extra"
+prio = 4
+when = ["firsts:first.image"]
+needs = ["advanced_to"]
+fr = ["Pour la première fois, je résume ce que voit ma caméra en 8 nombres."]
+en = ["For the first time, I summarise what my camera sees in 8 numbers."]
+
+[[line]]
+id = "first.target"
+slot = "extra"
+prio = 4
+when = ["firsts:first.target"]
+needs = ["targets_reached"]
+fr = ["J'ai atteint une cible pour la première fois ({targets_reached} pendant ce sol)."]
+en = ["I reached a target for the first time ({targets_reached} this sol)."]
+
+[[line]]
+id = "first.storm"
+slot = "extra"
+prio = 4
+replaces = ["event.storm"]
+when = ["firsts:first.storm", "events:storm"]
+needs = ["events"]
+fr = ["C'est ma première tempête de poussière : ma vue a baissé de {storm_view_pct} %."]
+en = ["This is my first dust storm: my view dropped by {storm_view_pct}%."]
+
+[[line]]
+id = "first.breakdown"
+slot = "extra"
+prio = 4
+replaces = ["drama.breakdown1", "drama.breakdowns"]
+when = ["firsts:first.breakdown"]
+needs = ["breakdowns"]
+fr = ["C'est ma première panne : la batterie est passée sous {cutoff_pct} %."]
+en = ["This is my first breakdown: the battery fell below {cutoff_pct}%."]
+
+[[line]]
+id = "first.night_drive"
+slot = "extra"
+prio = 4
+when = ["firsts:first.night_drive"]
+needs = ["night_drive_ticks"]
+fr = ["J'ai roulé de nuit pour la première fois : {night_drive_ticks} pas de temps."]
+en = ["I drove at night for the first time: {night_drive_ticks} time steps."]
+
+[[line]]
+id = "first.stuck"
+slot = "extra"
+prio = 4
+replaces = ["drama.stuck", "drama.freed_by_reverse"]
+when = ["firsts:first.stuck", "stuck"]
+needs = ["stuck"]
+fr = ["Pour la première fois, je termine le sol ensablé."]
+en = ["For the first time, I finish the sol stuck in sand."]
+
+[[line]]
+id = "first.stuck.freed"
+slot = "extra"
+prio = 4
+replaces = ["drama.stuck", "drama.freed_by_reverse"]
+when = ["firsts:first.stuck", "freed_by=reverse"]
+needs = ["freed_by"]
+fr = ["Pour la première fois, je me suis ensablé puis dégagé seul en marche arrière."]
+en = ["For the first time, I got stuck in sand and freed myself by reversing."]
+
+[[line]]
+id = "first.sample"
+slot = "extra"
+prio = 4
+when = ["firsts:first.sample"]
+needs = ["samples"]
+fr = ["Premier forage : j'ai prélevé un échantillon."]
+en = ["First drilling: I took a sample."]
+
+[[line]]
+id = "first.spectrum"
+slot = "extra"
+prio = 4
+when = ["firsts:first.spectrum"]
+needs = ["spectra"]
+fr = ["Premier spectre mesuré."]
+en = ["First spectrum measured."]
+
+[[line]]
+id = "first.category"
+slot = "extra"
+prio = 4
+when = ["firsts:first.category", "new_names"]
+needs = ["new_names", "n_categories"]
+fr = ["Première catégorie reconnue ; je l'ai nommée {new_name}."]
+en = ["First category recognised; I named it {new_name}."]
+
+[[line]]
+id = "first.anomaly"
+slot = "extra"
+prio = 4
+replaces = ["event.anomaly"]
+when = ["firsts:first.anomaly"]
+needs = ["anomaly_seen"]
+fr = ["J'ai vu une anomalie pour la première fois : une structure que mes cartes ne contenaient pas."]
+en = ["I saw an anomaly for the first time: a structure that my maps did not contain."]
+
+# ---------------------------------------------------------------- extras: safe mode (prio 5)
+[[line]]
+id = "safe.freed"
+slot = "extra"
+prio = 5
+when = ["safe_actions:freed"]
+needs = ["safe_actions"]
+fr = ["Je finissais le sol précédent ensablé. Le mode sûr m'a dégagé en me faisant reculer d'une cellule."]
+en = ["I ended the previous sol stuck in sand. Safe mode freed me by moving me back one cell."]
+
+[[line]]
+id = "safe.righted"
+slot = "extra"
+prio = 5
+when = ["safe_actions:righted"]
+needs = ["safe_actions"]
+fr = ["Je finissais le sol précédent basculé. Le mode sûr m'a redressé ; ma batterie a perdu {tip_cost_pct} %."]
+en = ["I ended the previous sol tipped over. Safe mode righted me; my battery lost {tip_cost_pct}%."]
+
+[[line]]
+id = "safe.recharged"
+slot = "extra"
+prio = 5
+when = ["safe_actions:recharged"]
+needs = ["safe_actions"]
+fr = ["Ma batterie est restée sous le seuil de panne pendant tout un sol. Une recharge de secours m'a ramené à {safe_recharge_pct} %."]
+en = ["My battery stayed below the breakdown threshold for a whole sol. An emergency recharge brought me back to {safe_recharge_pct}%."]
+
+[[line]]
+id = "safe.noise_doubled"
+slot = "extra"
+prio = 5
+when = ["safe_actions:noise_doubled"]
+needs = ["safe_actions"]
+fr = ["Pendant {no_progress_sols} sols de suite, j'ai parcouru moins de {no_progress_cells} cellules éveillé. Le mode sûr a doublé mon bruit d'exploration pour un sol."]
+en = ["For {no_progress_sols} sols in a row, I covered fewer than {no_progress_cells} cells while awake. Safe mode doubled my exploration noise for one sol."]
+
+# ---------------------------------------------------------------- extras: world events (prio 6)
+[[line]]
+id = "event.storm"
+slot = "extra"
+prio = 6
+when = ["events:storm"]
+needs = ["events"]
+fr = ["Une tempête de poussière a réduit ma vue de {storm_view_pct} %."]
+en = ["A dust storm cut my view by {storm_view_pct}%."]
+
+[[line]]
+id = "event.deposit"
+slot = "extra"
+prio = 6
+when = ["events:deposit"]
+needs = ["events"]
+fr = ["Un gisement de substance rare est apparu dans le monde."]
+en = ["A deposit of a rare substance appeared in the world."]
+
+[[line]]
+id = "event.anomaly"
+slot = "extra"
+prio = 6
+when = ["events:anomaly", "!anomaly_seen"]
+needs = ["events"]
+fr = ["Une structure inhabituelle est apparue dans le monde. Je ne l'ai pas encore vue."]
+en = ["An unusual structure appeared in the world. I have not seen it yet."]
+
+[[line]]
+id = "event.impact"
+slot = "extra"
+prio = 6
+when = ["events:impact"]
+needs = ["events"]
+fr = ["Un impact de comète a creusé un cratère ; j'ai ressenti la secousse."]
+en = ["A comet impact dug a crater; I felt the shock."]
+
+# ---------------------------------------------------------------- extras: dramas (prio 7)
+[[line]]
+id = "drama.stuck"
+slot = "extra"
+prio = 7
+when = ["stuck"]
+needs = ["stuck"]
+fr = ["Je termine le sol ensablé."]
+en = ["I finish the sol stuck in sand."]
+
+[[line]]
+id = "drama.freed_by_reverse"
+slot = "extra"
+prio = 7
+when = ["freed_by=reverse"]
+needs = ["freed_by"]
+fr = ["Ensablé, je me suis dégagé seul en marche arrière."]
+en = ["Stuck in sand, I freed myself by reversing."]
+
+[[line]]
+id = "drama.tipped"
+slot = "extra"
+prio = 7
+when = ["tipped"]
+needs = ["tipped", "max_tilt_deg"]
+fr = ["J'ai basculé : l'inclinaison a atteint {max_tilt_deg:0}°."]
+en = ["I tipped over: the tilt reached {max_tilt_deg:0}°."]
+
+[[line]]
+id = "drama.breakdown1"
+slot = "extra"
+prio = 7
+when = ["breakdowns==1", "stage!=3"]
+needs = ["breakdowns", "forced_sleep_ticks"]
+fr = ["Une panne de batterie : {forced_sleep_ticks} pas de temps de veille forcée."]
+en = ["One battery breakdown: {forced_sleep_ticks} time steps of forced standby."]
+
+[[line]]
+id = "drama.breakdowns"
+slot = "extra"
+prio = 7
+when = ["breakdowns>1", "stage!=3"]
+needs = ["breakdowns", "forced_sleep_ticks"]
+fr = ["{breakdowns} pannes de batterie : {forced_sleep_ticks} pas de temps de veille forcée."]
+en = ["{breakdowns} battery breakdowns: {forced_sleep_ticks} time steps of forced standby."]
+
+# ---------------------------------------------------------------- extras: health, contact gap (prio 8-9)
+[[line]]
+id = "health.truncated"
+slot = "extra"
+prio = 8
+when = ["truncated_at"]
+needs = ["truncated_at"]
+fr = ["Mon apprentissage de {truncated_module} s'est arrêté à la génération {truncated_gen} : le temps de calcul alloué était atteint."]
+en = ["My learning of {truncated_module} stopped at generation {truncated_gen}: the allotted compute time was reached."]
+
+[[line]]
+id = "health.degraded"
+slot = "extra"
+prio = 8
+when = ["degraded"]
+needs = ["degraded"]
+fr = ["Un calcul a échoué ; mon apprentissage est suspendu pour ce sol."]
+en = ["A computation failed; my learning is suspended for this sol."]
+
+[[line]]
+id = "gap"
+slot = "extra"
+prio = 9
+when = ["days_since_last_run>=2"]
+needs = ["days_since_last_run"]
+fr = ["Mon dernier contact date de {days_since_last_run} jours."]
+en = ["My last contact was {days_since_last_run} days ago."]

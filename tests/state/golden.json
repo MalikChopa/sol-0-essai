@@ -1,0 +1,6 @@
+{
+ "state.explored_regions": "sha256:447b7a5016280136921b0be5782fcffa5be5a61b1d3dedec513a1a8950d99048",
+ "state.explored_roundtrip": "sha256:6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+ "state.migration_0_to_1": "sha256:9a8ce8df838543e97635da03433bcdf5896696581bc86f4458a4c113fc5fcc83",
+ "state.new_state": "sha256:9a8ce8df838543e97635da03433bcdf5896696581bc86f4458a4c113fc5fcc83"
+}

@@ -1,0 +1,14 @@
+world_seed = 20261111
+ticks_per_sol = 1200
+tick_s = 72
+start_hour = 5
+learn_wallclock_s = 150
+checkpoints = 5
+journal_tail = 30
+trail_sols = 20
+trail_every_ticks = 16
+max_attempts = 3
+passive_red_after = 3
+main_lag_red = 3
+new_bytes_max = 3500000
+repo_size_alert_kb = 1048576

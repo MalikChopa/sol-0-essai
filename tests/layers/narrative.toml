@@ -1,0 +1,2 @@
+project = ["config", "version", "core", "state"]
+third_party = ["numpy"]

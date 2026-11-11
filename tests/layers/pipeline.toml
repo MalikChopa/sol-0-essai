@@ -1,0 +1,2 @@
+project = ["config", "version", "core", "world", "agent", "brain", "stages", "state", "sim", "render", "narrative"]
+third_party = ["numpy", "PIL"]

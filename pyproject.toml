@@ -1,0 +1,12 @@
+[project]
+name = "sol-0"
+version = "0.0.0"
+description = "Sol-0: a simulated rover driven by small numpy neural networks"
+requires-python = ">=3.12"
+dependencies = ["numpy==2.5.4", "Pillow==13.0.0"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+markers = ["perf: performance measurements (Mac), run with -m perf"]
+addopts = "-p no:cacheprovider"

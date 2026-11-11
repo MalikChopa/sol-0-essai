@@ -1,0 +1,2 @@
+project = ["cli"]
+third_party = []

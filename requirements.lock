@@ -1,0 +1,9 @@
+# Exact versions and hashes (J8a). Install: pip install --no-deps --only-binary=:all: --require-hashes -r requirements.lock
+# Hashes: PyPI JSON API (digests.sha256) of the cp312 wheels: manylinux x86-64 (runner) and macOS arm64 (dev machine).
+numpy==2.5.4 \
+    --hash=sha256:fbde6962867ee75b48b0ee29b2b9372ec5d617799dbaf38e82dc0596f2f7738a \
+    --hash=sha256:b11e8fda06a7d69f15ebf542660b74466c2e51094800c1fb794f47ad4faeef17 \
+    --hash=sha256:9cb18a327b49c5c337f972b03682f6a49855525faaf3c0d3e9c96cd0fd8880a8
+pillow==13.0.0 \
+    --hash=sha256:42d63be3af4f9b951b199b0a9d23365d37ab14687e6d77b74940432c8515c4ca \
+    --hash=sha256:fc481f742ccda20e9ed760b8f978dff50f2a4e9bc253ac167fb0a05b0783ef52

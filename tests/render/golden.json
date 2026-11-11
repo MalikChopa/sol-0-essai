@@ -1,0 +1,7 @@
+{
+ "render.font": "sha256:1830aecdb4821bf88e2c37c60a23b0b471ec98f55cda2a27d6cf56e948739840",
+ "render.frame": "sha256:a1a30c40e4fe5b4a5b93986af9bbe16ebac8bc7fa55956696d8516b08ace9012",
+ "render.luminance": "sha256:66464331fdf477a995aaf008ef247352a0d3a822f8128653e8fa7cf03560a08a",
+ "render.palette": "sha256:55fd9eed76dbe8f011408d77bc03ea7ca9b1caed0a7fb775d43b41bb9a61dfcc",
+ "render.vignette": "sha256:5a38ad6694b9c90a6724c8797a0c0b7afc95dd33a92747477778c102595618e7"
+}
