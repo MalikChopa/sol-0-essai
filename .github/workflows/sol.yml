@@ -1,7 +1,7 @@
 name: sol
 on:
   schedule:
-    - cron: "23 * * * *"
+    - cron: "7,37 * * * *"
   workflow_dispatch:
     inputs:
       mode:
