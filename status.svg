@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="120" viewBox="0 0 640 120" role="img" aria-label="Sol-0 status: sol 7, stage 1, progress 0 percent" font-family="ui-monospace, Menlo, Consolas, monospace">
+<rect x="0.5" y="0.5" width="639" height="119" fill="#120c0a" stroke="#412d16"/>
+<text x="16" y="32" font-size="22" fill="#ffb347">SOL 7</text>
+<text x="16" y="54" font-size="13" fill="#ffb347">STAGE 1 | I CAN MOVE</text>
+<rect x="16" y="66" width="300" height="12" fill="#291c10" stroke="#704e22"/>
+<rect x="16" y="66" width="0" height="12" fill="#ffb347"/>
+<text x="16" y="96" font-size="12" fill="#ffb347">0 % | R2 0.00 / 0.70 | stable 0/3 sols</text>
+<rect x="350" y="30" width="66" height="22" fill="none" stroke="#704e22"/>
+<path d="M355 41l3 3l6 -7" fill="none" stroke="#ffb347" stroke-width="2"/>
+<text x="370" y="45" font-size="12" fill="#ffb347">move</text>
+<rect x="422" y="30" width="66" height="22" fill="none" stroke="#704e22"/>
+<path d="M427 41A5 5 0 0 1 437 41z" fill="#ffb347"/>
+<text x="442" y="45" font-size="12" fill="#ffb347">drive</text>
+<rect x="494" y="30" width="66" height="22" fill="none" stroke="#704e22"/>
+<circle cx="504" cy="41" r="2" fill="#593e1c"/>
+<text x="514" y="45" font-size="12" fill="#ffb347">energy</text>
+<rect x="566" y="30" width="66" height="22" fill="none" stroke="#704e22"/>
+<circle cx="576" cy="41" r="2" fill="#593e1c"/>
+<text x="586" y="45" font-size="12" fill="#ffb347">sample</text>
+<rect x="350" y="64" width="66" height="22" fill="none" stroke="#704e22"/>
+<circle cx="360" cy="75" r="2" fill="#593e1c"/>
+<text x="370" y="79" font-size="12" fill="#ffb347">analyze</text>
+<rect x="422" y="64" width="66" height="22" fill="none" stroke="#704e22"/>
+<circle cx="432" cy="75" r="2" fill="#593e1c"/>
+<text x="442" y="79" font-size="12" fill="#ffb347">ecology</text>
+<rect x="494" y="64" width="66" height="22" fill="none" stroke="#704e22"/>
+<circle cx="504" cy="75" r="2" fill="#593e1c"/>
+<text x="514" y="79" font-size="12" fill="#ffb347">curiosity</text>
+<text x="628" y="112" font-size="12" fill="#ffb347" text-anchor="end">last contact 2026-11-11 18:49 UTC | 4 sols/day</text>
+</svg>
