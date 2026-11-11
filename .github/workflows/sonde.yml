@@ -1,0 +1,42 @@
+name: sonde
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: sonde
+  cancel-in-progress: false
+jobs:
+  sonde:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Dépendances
+        run: python -m pip install --disable-pip-version-check -q numpy==2.5.4 pillow==13.0.0
+      - name: Historique précédent
+        run: |
+          mkdir -p out
+          if git fetch -q origin state --depth=1; then git show FETCH_HEAD:runs.csv > out/runs.csv || true; fi
+      - name: Sonde
+        env:
+          EVENT: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: python probe.py out
+      - name: Publier sur la branche state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -q --orphan state-tmp
+          cp out/probe.gif out/probe.json out/runs.csv .
+          git add probe.gif probe.json runs.csv
+          git commit -qm "sonde run ${{ github.run_number }}"
+          for i in 1 2 3; do git push -q -f origin HEAD:refs/heads/state && break; sleep $((i*5)); done
