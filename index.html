@@ -1,29 +1,786 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-tab="live" data-mode="console">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: https://raw.githubusercontent.com; connect-src 'self' https://live.sol0.fr https://raw.githubusercontent.com; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="dark">
 <title>Sol-0 live</title>
 <link rel="stylesheet" href="live.css">
+<script src="route.js"></script>
 </head>
 <body>
-<main>
-<header><h1>SOL-0</h1><span id="state" data-state="CONNECTING" role="status">CONNECTING</span> <a id="langlink" href="#fr">Français</a></header>
-<canvas id="c" width="640" height="360" role="img" aria-label="Live console of the Sol-0 rover"></canvas>
-<div id="off" hidden><img id="offimg" alt="Last published console animation of Sol-0 (recorded, not live)" width="640" height="360"><p id="offnote"></p></div>
+<a class="skip" id="skip" href="#en/live"><span class="l-fr" lang="fr">Aller à la console</span><span class="l-en" lang="en">Skip to the console</span></a>
+<header id="top">
+<h1>SOL-0</h1>
+<nav id="tabs" aria-label="Page sections"><a id="tab-live" href="#en/live"><span class="l-fr" lang="fr">Direct</span><span class="l-en" lang="en">Live</span></a><a id="tab-about" href="#en/about"><span class="l-fr" lang="fr">Comment ça marche</span><span class="l-en" lang="en">How it works</span></a></nav>
+<span class="tools"><a id="langlink" href="#fr/live"><span class="l-en" lang="fr">Français</span><span class="l-fr" lang="en">English</span></a><button id="fs" type="button" hidden><span class="l-fr" lang="fr">Plein écran</span><span class="l-en" lang="en">Full screen</span></button></span>
+</header>
+<div id="bar"><span id="state" data-state="CONNECTING"><span class="l-fr" lang="fr">CONNEXION</span><span class="l-en" lang="en">CONNECTING</span></span><span id="line"></span><span id="age"></span><span id="noimg"></span></div>
+<div id="bar2"><span id="stagebar"></span><span id="next"></span></div>
 <p id="silentmsg" role="status" hidden></p>
-<p id="line"></p>
-<p id="night"></p>
+<p id="stateann" class="sr" role="status"></p>
+<main id="main">
+<section id="view-live" aria-labelledby="h-live">
+<h2 id="h-live" class="sr" tabindex="-1"><span class="l-fr" lang="fr">Direct</span><span class="l-en" lang="en">Live</span></h2>
+<noscript><div class="noscript"><p lang="fr">Cette page a besoin de JavaScript pour afficher le direct.</p><p lang="en">This page needs JavaScript to show the live console.</p></div></noscript>
+<div id="stage" tabindex="-1">
+<div id="console">
+<canvas id="c" width="640" height="360" role="img" aria-label="Live console of the Sol-0 rover: camera, brain, local map, telemetry."></canvas>
+<button id="hit-cam" class="hit hit-cam" type="button" data-panel="cam" aria-label="CAM-1 camera"><span class="tip" aria-hidden="true">+</span></button>
+<button id="hit-brain" class="hit hit-brain" type="button" data-panel="brain" aria-label="Brain"><span class="tip" aria-hidden="true">+</span></button>
+<button id="hit-map" class="hit hit-map" type="button" data-panel="map" aria-label="Local map"><span class="tip" aria-hidden="true">+</span></button>
+<button id="hit-tel" class="hit hit-tel" type="button" data-panel="tel" aria-label="Telemetry"><span class="tip" aria-hidden="true">+</span></button>
+<button id="hit-inst" class="hit hit-inst" type="button" data-panel="inst" aria-label="Arm / scan"><span class="tip" aria-hidden="true">+</span></button>
+</div>
+<div id="panels">
+<button id="pb-cam" class="panel" type="button" data-panel="cam" aria-label="CAM-1 camera"><canvas id="pc-cam" width="322" height="202" aria-hidden="true"></canvas></button>
+<button id="pb-brain" class="panel" type="button" data-panel="brain" aria-label="Brain"><canvas id="pc-brain" width="296" height="200" aria-hidden="true"></canvas></button>
+<div id="g-maptel" class="group"><button id="pb-map" class="panel" type="button" data-panel="map" aria-label="Local map"><canvas id="pc-map" width="122" height="122" aria-hidden="true"></canvas></button><button id="pb-tel" class="panel" type="button" data-panel="tel" aria-label="Telemetry"><canvas id="pc-tel" width="248" height="120" aria-hidden="true"></canvas></button></div>
+<button id="pb-inst" class="panel" type="button" data-panel="inst" aria-label="Arm / scan"><canvas id="pc-inst" width="240" height="120" aria-hidden="true"></canvas></button>
+</div>
+<div id="off" hidden><img id="offimg" alt="Last published console animation of Sol-0 (recorded, not live)" width="640" height="360"><p id="offnote"></p></div>
+</div>
+<details id="details"><summary><span class="l-fr" lang="fr">Détails</span><span class="l-en" lang="en">Details</span></summary>
 <p id="season"></p>
-<p id="age"></p>
-<p id="next"></p>
-<p id="legend"></p>
+<p><span class="l-fr" lang="fr">SOL d/n : la place de ce sol dans l'année de la planète, comptée à partir de 0 comme les sols (une année = n sols ; en année 1, d est le numéro du sol). DURÉE DU JOUR : longueur du jour simulé de ce sol.</span><span class="l-en" lang="en">SOL d/n: the place of this sol in the planet's year, counted from 0 like the sols (one year = n sols; in year 1, d is the sol's number). DAYLIGHT: length of the simulated day of this sol.</span></p>
+<p><span class="l-fr" lang="fr">DÉBUT DU SOL : le début, en heure UTC, du créneau de 15 minutes de ce sol. L'heure en haut à gauche de CAM-1 est l'horloge du rover.</span><span class="l-en" lang="en">SOL START: the start, in UTC, of the 15-minute slot of this sol. The hour at the top left of CAM-1 is the rover's own clock.</span></p>
+<p><span class="l-fr" lang="fr">Âge de la donnée : l'âge de la plus ancienne chose dessinée, le dernier pas calculé ou la dernière image de CAM-1 (une image n'arrive que tous les quelques pas). Il grandit pendant la pause de fin de sol et quand le moteur se tait.</span><span class="l-en" lang="en">Data age: the age of the oldest thing drawn, the last computed step or the last CAM-1 image (an image only comes every few steps). It grows during the end-of-sol pause and when the engine is silent.</span></p>
+<p id="legend"><span class="l-fr" lang="fr">Connexions : luminosité = |poids x entrée|, pointillé = négatif. Les nœuds sont exacts.</span><span class="l-en" lang="en">Connections: brightness = |weight x input|, dotted = negative. Nodes are exact.</span></p>
+<p><span class="l-fr" lang="fr">Cliquez ou touchez un panneau pour l'agrandir.</span><span class="l-en" lang="en">Click or tap a panel to enlarge it.</span></p>
+<p><a id="toabout" href="#en/about"><span class="l-fr" lang="fr">Comment ça marche →</span><span class="l-en" lang="en">How it works →</span></a></p>
+</details>
 <p id="summary" class="sr" aria-live="polite"></p>
+</section>
+<section id="view-about" aria-labelledby="h-about">
+<h2 id="h-about" class="sr" tabindex="-1"><span class="l-fr" lang="fr">Comment ça marche</span><span class="l-en" lang="en">How it works</span></h2>
+<div class="l-fr" lang="fr"><div class="x" lang="fr" data-explain="fr">
+
+<h2 id="fr-top">Comment fonctionne Sol-0</h2>
+
+<p class="x-lead">Sol-0 est un petit robot qui n'existe que dans un programme. Il vit sur une planète inventée, couleur rouille, et apprend seul à s'y débrouiller avec un cerveau fait de six petits modules. Personne ne le conduit. Il est né le <strong>13 novembre 2026 à 12:11:21 UTC</strong> et vit depuis en direct, sur un serveur allumé jour et nuit. Tout ce que montre la console est le calcul réel, au moment où il se fait.</p>
+
+<nav class="x-toc" aria-label="Sommaire">
+<ol>
+<li><a href="#fr/about/intro">Sol-0 en bref</a></li>
+<li><a href="#fr/about/planet">La planète et le sol</a></li>
+<li><a href="#fr/about/body">Le corps</a></li>
+<li><a href="#fr/about/brain">Le cerveau : six modules</a></li>
+<li><a href="#fr/about/learn">Comment il apprend</a></li>
+<li><a href="#fr/about/camera">CAM-1 : ce que voit le cerveau</a></li>
+<li><a href="#fr/about/stages">Les stades et leurs examens</a></li>
+<li><a href="#fr/about/console">La console, panneau par panneau</a></li>
+<li><a href="#fr/about/live">Ce que veut dire « en direct »</a></li>
+<li><a href="#fr/about/real">Tout est réel</a></li>
+<li><a href="#fr/about/journal">Le journal et les images du profil</a></li>
+<li><a href="#fr/about/faq">Questions fréquentes</a></li>
+<li><a href="#fr/about/glossary">Petit glossaire</a></li>
+</ol>
+</nav>
+
+<section data-sec="intro" aria-labelledby="fr-intro">
+
+<h3 id="fr-intro" tabindex="-1">Sol-0 en bref</h3>
+<ul>
+<li>Un <strong>rover simulé</strong> : un corps à deux roues, une caméra, une batterie et un panneau solaire, sur une planète calculée par le programme.</li>
+<li>Un <strong>cerveau de six modules</strong>, M0 à M5 : de très petits réseaux de neurones (le plus grand a 434 réglages) et un classeur. Ni modèle de langage, ni bibliothèque d'intelligence artificielle : des réseaux écrits à la main.</li>
+<li>Un <strong>sol</strong>, une journée de la planète, toutes les 15 minutes : 96 par jour.</li>
+<li>Des <strong>stades</strong>, comme des années d'école : chacun a un examen mesuré et une durée minimale.</li>
+<li><strong>Tout est réel</strong> : l'image de la caméra est exactement ce que lit le cerveau, et chaque point lumineux du cerveau est une valeur vraiment calculée.</li>
+<li><strong>Rien n'a été joué d'avance</strong> : sa vie a commencé à sa naissance et personne ne sait ce qu'il vivra.</li>
+</ul>
+</section>
+
+<section data-sec="planet" aria-labelledby="fr-planet">
+
+<h3 id="fr-planet" tabindex="-1">La planète et le sol</h3>
+<p>Le monde n'est ni dessiné à la main ni stocké : il est recalculé à partir d'un seul nombre, la <strong>graine</strong>. Le même nombre redonne toujours le même paysage, comme une graine de Minecraft. Le terrain est découpé en cases de 5&nbsp;m ; le sol y est roche, poussière, sable ou glace. Sur la glace, les roues accrochent deux fois moins que sur la roche.</p>
+<p><strong>Un sol</strong>, c'est une journée de 24 heures de la planète, découpée en 1&nbsp;200 <strong>pas</strong> de 72 secondes. À chaque pas, le cerveau décide de la vitesse de ses deux roues.</p>
+<p><strong>En direct</strong>, un sol commence toutes les 15 minutes, à heure fixe en temps universel (UTC) : 00:00, 00:15, 00:30… soit 96 sols par jour. Chaque créneau se déroule ainsi :</p>
+<ul>
+<li>12 à 14 minutes de vie : un pas toutes les 0,6 à 0,7 seconde selon le stade, le jour puis la nuit ;</li>
+<li>1 à 3 minutes de <strong>fin de sol</strong> : le cerveau apprend de ce qu'il vient de vivre, et la console montre cet apprentissage génération après génération ;</li>
+<li>puis l'attente du sol suivant, dont l'heure est affichée.</li>
+</ul>
+<figure class="x-fig">
+<svg class="x-svg" viewBox="0 0 400 236" role="img" aria-labelledby="xf-slot-t xf-slot-d" font-family="ui-monospace,Menlo,Consolas,monospace"><title id="xf-slot-t">Un créneau de 15 minutes, stades 3 à 5</title><desc id="xf-slot-d">Barre de temps de 15 minutes. De 0 à 12 minutes : le sol en direct, 1 200 pas, le jour puis la nuit. De 12 à 15 minutes : la fin de sol, l'apprentissage puis l'attente du sol suivant. Un pas vaut 72 secondes de la journée du rover et il est calculé toutes les 0,6 seconde aux stades 3 à 5 ; aux stades 0 et 1, pas de 0,7 seconde et fin de sol d'une minute ; au stade 2, pas de 0,65 seconde et fin de sol de 2 minutes. 96 créneaux par jour, calés sur l'heure UTC.</desc><defs><marker id="xf-slot-m" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8z" fill="#ffb347"/></marker></defs><rect x=".5" y=".5" width="399" height="235" fill="#120c0a" stroke="#8a3b1e"/><text x="392" y="15" font-size="10" fill="#c9673a" text-anchor="end">SCHÉMA</text><text x="12" y="34" font-size="13" fill="#ffb347">Un créneau de 15 minutes, stades 3 à 5</text><rect x="20" y="48" width="288" height="34" fill="#c9673a" fill-opacity=".45" stroke="#d98c4a"/><rect x="308" y="48" width="72" height="34" fill="#ffb347" fill-opacity=".35" stroke="#d98c4a"/><text x="164" y="70" font-size="13" fill="#f2c38b" text-anchor="middle" font-weight="bold">LE SOL, EN DIRECT</text><text x="344" y="70" font-size="12" fill="#f2c38b" text-anchor="middle" font-weight="bold">FIN</text><path d="M20 82V90" stroke="#d98c4a"/><text x="20" y="102" font-size="11" fill="#d98c4a" text-anchor="start">0</text><path d="M308 82V90" stroke="#d98c4a"/><text x="308" y="102" font-size="11" fill="#d98c4a" text-anchor="middle">12</text><path d="M380 82V90" stroke="#d98c4a"/><text x="380" y="102" font-size="11" fill="#d98c4a" text-anchor="end">15 min</text><rect x="20" y="112" width="10" height="10" fill="#c9673a" fill-opacity=".45" stroke="#d98c4a"/><text x="36" y="121" font-size="11" fill="#f2c38b">vie du sol : 1 200 pas, jour puis nuit</text><rect x="20" y="128" width="10" height="10" fill="#ffb347" fill-opacity=".35" stroke="#d98c4a"/><text x="36" y="137" font-size="11" fill="#f2c38b">fin de sol : apprentissage, puis attente</text><text x="20" y="160" font-size="12" fill="#ffb347">1 pas = 72 s de la journée du rover,</text><text x="20" y="176" font-size="12" fill="#ffb347">calculé toutes les 0,6 s (stades 3 à 5).</text><text x="20" y="192" font-size="12" fill="#f2c38b">Stades 0-1 : pas de 0,7 s, fin de sol 1 min.</text><text x="20" y="208" font-size="12" fill="#f2c38b">Stade 2 : pas de 0,65 s, fin de sol 2 min.</text><text x="20" y="224" font-size="12" fill="#f2c38b">96 créneaux par jour : 00:00, 00:15… UTC.</text></svg>
+<figcaption><span class="x-tag">schéma</span>Un créneau de 15 minutes. La part du jour et de la nuit dans le sol change avec les saisons.</figcaption>
+</figure>
+<p><strong>Les saisons passent vite.</strong> Une année de la planète dure 600 sols, soit 6 jours et 6 heures pour nous. Selon la saison, le jour du rover dure de 9,5 à 14,5 heures. Une tempête survient en moyenne un sol sur 40, environ 2,4 fois par jour : elle divise la vue par deux et réduit l'apport du panneau solaire à 35&nbsp;%.</p>
+</section>
+
+<section data-sec="body" aria-labelledby="fr-body">
+
+<h3 id="fr-body" tabindex="-1">Le corps</h3>
+<ul>
+<li><strong>Deux commandes</strong>, gauche et droite, entre −1 et +1, comme un char : égales, il va tout droit ; différentes, il tourne. Sa vitesse maximale est d'environ 1,7&nbsp;cm/s.</li>
+<li><strong>Une batterie</strong>, vidée par les moteurs et le chauffage de nuit, remplie par le panneau solaire. Sous 15&nbsp;%, c'est la panne : veille forcée jusqu'à 40&nbsp;%.</li>
+<li><strong>Le terrain résiste</strong> : s'il patine trop dans le sable, il s'enlise, et reculer peut le libérer ; s'il penche trop, il se renverse.</li>
+<li><strong>Ses sens s'allument par stade.</strong> Un sens pas encore allumé envoie exactement 0 au cerveau, comme des yeux bandés.</li>
+</ul>
+</section>
+
+<section data-sec="brain" aria-labelledby="fr-brain">
+
+<h3 id="fr-brain" tabindex="-1">Le cerveau : six modules</h3>
+<p>Le cerveau de Sol-0 n'est pas un gros réseau mais une petite équipe. Chaque module a un seul métier. Ils se passent des nombres, et aucun ne « comprend » ce qu'il fait.</p>
+<h4>Un neurone, c'est un vote pondéré</h4>
+<p>Chaque entrée vote avec sa valeur. Le <strong>poids</strong> dit combien le neurone l'écoute, et dans quel sens : un poids négatif change un « pour » en « contre ». Le neurone additionne les voix, ajoute un petit décalage (le <strong>biais</strong>), puis passe le total dans un « écraseur » qui le ramène entre −1 et +1. Un <strong>réseau</strong>, ce sont des couches de neurones : les entrées, une couche cachée au milieu, les sorties. Ses <strong>réglages</strong> sont tous ses poids et biais.</p>
+<figure class="x-fig">
+<svg class="x-svg" viewBox="0 0 400 236" role="img" aria-labelledby="xf-neuron-t xf-neuron-d" font-family="ui-monospace,Menlo,Consolas,monospace"><title id="xf-neuron-t">Un neurone : un vote pondéré</title><desc id="xf-neuron-d">Deux entrées, 1 et moins 2, sont multipliées par leurs poids, 0,5 et 0,25, puis additionnées avec un biais de 0,1 : le total vaut 0,1. Un écraseur ramène ce total entre moins 1 et plus 1 : la sortie vaut 0,09. Exemple de calcul à la main, pas un neurone de Sol-0.</desc><defs><marker id="xf-neuron-m" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8z" fill="#ffb347"/></marker></defs><rect x=".5" y=".5" width="399" height="235" fill="#120c0a" stroke="#8a3b1e"/><text x="392" y="15" font-size="10" fill="#c9673a" text-anchor="end">SCHÉMA</text><text x="12" y="30" font-size="13" fill="#ffb347">Un neurone : un vote pondéré</text><rect x="10" y="50" width="86" height="30" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="53.0" y="69.2" font-size="12" fill="#f2c38b" text-anchor="middle">entrée 1</text><rect x="10" y="116" width="86" height="30" rx="3" fill="#120c0a" stroke="#6f9fd8"/><text x="53.0" y="135.2" font-size="12" fill="#f2c38b" text-anchor="middle">entrée −2</text><path d="M96 65L176 92" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-neuron-m)"/><path d="M96 131L176 106" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-neuron-m)"/><text x="122" y="66" font-size="12" fill="#ffb347">× 0,5</text><text x="122" y="146" font-size="12" fill="#ffb347">× 0,25</text><circle cx="200" cy="98" r="24" fill="#ffb347" fill-opacity=".15" stroke="#ffb347"/><text x="200" y="95" font-size="10" fill="#f2c38b" text-anchor="middle">somme</text><text x="200" y="109" font-size="12" fill="#ffb347" text-anchor="middle">0,1</text><text x="200" y="60" font-size="11" fill="#d98c4a" text-anchor="middle">biais + 0,1</text><path d="M200 64V72" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-neuron-m)"/><path d="M224 98H246" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-neuron-m)"/><rect x="248" y="70" width="72" height="56" rx="3" fill="#120c0a" stroke="#d98c4a"/><path d="M252 98H316M284 74V122" stroke="#8a3b1e"/><path d="M252.0 116.9 L254.7 116.6 L257.3 116.3 L260.0 116.0 L262.7 115.6 L265.3 115.1 L268.0 114.5 L270.7 113.7 L273.3 112.7 L276.0 111.2 L278.7 109.0 L281.3 105.3 L284.0 98.0 L286.7 90.7 L289.3 87.0 L292.0 84.8 L294.7 83.3 L297.3 82.3 L300.0 81.5 L302.7 80.9 L305.3 80.4 L308.0 80.0 L310.7 79.7 L313.3 79.4 L316.0 79.1" fill="none" stroke="#ffb347" stroke-width="1.5"/><text x="284" y="140" font-size="11" fill="#d98c4a" text-anchor="middle">écraseur</text><path d="M320 98H336" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-neuron-m)"/><text x="366" y="95" font-size="10" fill="#f2c38b" text-anchor="middle">sortie</text><text x="366" y="109" font-size="12" fill="#ffb347" text-anchor="middle">0,09</text><text x="12" y="176" font-size="12" fill="#f2c38b">1 × 0,5 + (−2) × 0,25 + 0,1 = 0,1</text><text x="12" y="193" font-size="12" fill="#f2c38b">écrasé entre −1 et +1 : 0,1 / 1,1 = 0,09</text><text x="12" y="210" font-size="12" fill="#c9673a">Exemple à la main, pas un neurone de Sol-0.</text></svg>
+<figcaption><span class="x-tag">schéma</span>Un neurone, calculé à la main avec des nombres d'exemple.</figcaption>
+</figure>
+<h4>Qui fait quoi</h4>
+<figure class="x-fig">
+<svg class="x-svg" viewBox="0 0 400 348" role="img" aria-labelledby="xf-team-t xf-team-d" font-family="ui-monospace,Menlo,Consolas,monospace"><title id="xf-team-t">Qui nourrit qui</title><desc id="xf-team-d">La caméra CAM-1 alimente M2, l'œil, qui la résume en 8 nombres. Ces nombres, avec le corps, la cible, le soleil, la batterie et l'heure, entrent dans M0, le pilote, qui commande les deux roues. M3, l'intendant de l'énergie, choisit le mode et l'envoie à M0. M1, le prédicteur, reçoit le geste et l'effet réel. Au stade 4, le carré de sol sous le bras entre dans M4, le foreur, qui décide de forer ou non. Au stade 5, le spectre des échantillons entre dans M5, le classeur, qui donne une famille.</desc><defs><marker id="xf-team-m" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8z" fill="#ffb347"/></marker></defs><rect x=".5" y=".5" width="399" height="347" fill="#120c0a" stroke="#8a3b1e"/><text x="392" y="15" font-size="10" fill="#c9673a" text-anchor="end">SCHÉMA</text><text x="12" y="30" font-size="13" fill="#ffb347">Qui nourrit qui</text><rect x="10" y="44" width="80" height="30" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="50.0" y="63.2" font-size="12" fill="#f2c38b" text-anchor="middle">CAM-1</text><rect x="110" y="44" width="112" height="30" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="166.0" y="63.2" font-size="12" fill="#f2c38b" text-anchor="middle">M2 · œil</text><path d="M90 59H108" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-team-m)"/><rect x="10" y="86" width="212" height="40" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="116.0" y="102.7" font-size="12" fill="#f2c38b" text-anchor="middle">corps · cible · soleil</text><text x="116.0" y="117.7" font-size="12" fill="#f2c38b" text-anchor="middle">batterie · heure</text><rect x="250" y="60" width="62" height="46" rx="3" fill="#ffb347" fill-opacity=".15" stroke="#ffb347"/><text x="281.0" y="79.4" font-size="13" fill="#f2c38b" text-anchor="middle">M0</text><text x="281.0" y="95.7" font-size="13" fill="#f2c38b" text-anchor="middle">pilote</text><rect x="330" y="60" width="62" height="46" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="361.0" y="79.7" font-size="12" fill="#f2c38b" text-anchor="middle">roues</text><text x="361.0" y="94.7" font-size="12" fill="#f2c38b" text-anchor="middle">L · R</text><path d="M222 59L249 70" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-team-m)"/><path d="M222 106L249 96" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-team-m)"/><path d="M312 83H328" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-team-m)"/><rect x="110" y="146" width="112" height="30" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="166.0" y="165.2" font-size="12" fill="#f2c38b" text-anchor="middle">M3 · intendant</text><path d="M222 161H281V108" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-team-m)"/><text x="228" y="156" font-size="11" fill="#d98c4a">mode</text><rect x="250" y="196" width="142" height="30" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="321.0" y="215.2" font-size="12" fill="#f2c38b" text-anchor="middle">M1 · prédicteur</text><path d="M361 106V194" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-team-m)"/><text x="356" y="190" font-size="11" fill="#d98c4a" text-anchor="end">geste + effet réel</text><path d="M10 242H390" stroke="#8a3b1e" stroke-dasharray="2 4"/><rect x="10" y="254" width="130" height="28" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="75.0" y="271.9" font-size="11" fill="#f2c38b" text-anchor="middle">bras · stade 4</text><rect x="160" y="254" width="112" height="28" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="216.0" y="272.2" font-size="12" fill="#f2c38b" text-anchor="middle">M4 · foreur</text><path d="M140 268H158" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-team-m)"/><path d="M272 268H290" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-team-m)"/><text x="296" y="272" font-size="12" fill="#f2c38b">forer ?</text><rect x="10" y="292" width="130" height="28" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="75.0" y="309.9" font-size="11" fill="#f2c38b" text-anchor="middle">spectre · stade 5</text><rect x="160" y="292" width="112" height="28" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="216.0" y="310.2" font-size="12" fill="#f2c38b" text-anchor="middle">M5 · classeur</text><path d="M140 306H158" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-team-m)"/><path d="M272 306H290" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-team-m)"/><text x="296" y="310" font-size="12" fill="#f2c38b">famille</text><text x="390" y="340" font-size="10" fill="#d98c4a" text-anchor="end">Chaque module s'éveille avec un stade.</text></svg>
+<figcaption><span class="x-tag">schéma</span>Le chemin des nombres pendant un sol. M4 et M5 ne s'éveillent qu'aux stades 4 et 5.</figcaption>
+</figure>
+<div class="x-mods">
+<section class="x-mod" aria-label="M0, le pilote">
+<h5>M0 · le pilote</h5>
+<p>Conduit : à chaque pas, il choisit la commande des deux roues. Comme un conducteur qui apprend sur un parking, à force d'essais.</p>
+<dl><dt>Reçoit</dt><dd>jusqu'à 24 valeurs : vitesse de ses roues, pente, glissement, son geste précédent, le résumé de l'image, la direction et la distance de sa cible, la batterie, le soleil, l'heure (5 entrées allumées aux stades 0 et 1, 18 au stade 2, 22 ensuite)</dd>
+<dt>Taille</dt><dd>24 → 16 → 2 : 434 réglages</dd>
+<dt>Apprend</dt><dd>par évolution, à fond au stade 2</dd></dl>
+</section>
+<section class="x-mod" aria-label="M1, le prédicteur">
+<h5>M1 · le prédicteur</h5>
+<p>Se demande : « si je fais ce geste, que va-t-il se passer ? » Il ne conduit pas : il prédit, comme un enfant qui découvre comment réagit son vélo.</p>
+<dl><dt>Reçoit</dt><dd>le geste (les deux commandes), la pente et le glissement, en moyenne sur 20 pas</dd>
+<dt>Prédit</dt><dd>de combien le rover va avancer, dériver et tourner</dd>
+<dt>Taille</dt><dd>5 → 16 → 3 : 147 réglages</dd>
+<dt>Apprend</dt><dd>par gradient ; sa justesse est l'examen du stade 1</dd></dl>
+</section>
+<section class="x-mod" aria-label="M2, l'œil">
+<h5>M2 · l'œil</h5>
+<p>Résume chaque photo en 8 nombres, ceux que lit le pilote. Un peu comme résumer un tableau en 8 mots, sauf que ces nombres ne sont pas des mots : personne ne sait ce que chacun « veut dire ».</p>
+<dl><dt>Reçoit</dt><dd>40 mesures fixes de l'image : clarté et distance, par zones</dd>
+<dt>Taille</dt><dd>40 → 8 : 320 réglages</dd>
+<dt>Apprend</dt><dd>sans note : il garde les 8 façons dont les images varient le plus</dd></dl>
+</section>
+<section class="x-mod" aria-label="M3, l'intendant">
+<h5>M3 · l'intendant</h5>
+<p>Gère l'énergie : tous les 20 pas, il choisit de rouler, de s'arrêter au soleil pour recharger, ou de dormir. Comme un randonneur qui décide quand faire une pause pour ne pas finir la journée à bout de forces.</p>
+<dl><dt>Reçoit</dt><dd>la batterie, la hauteur du soleil et sa tendance, l'heure, l'apport solaire, un signal de tempête</dd>
+<dt>Taille</dt><dd>8 → 8 → 3 : 99 réglages</dd>
+<dt>Apprend</dt><dd>par évolution, sur des journées imaginées, à fond au stade 3</dd></dl>
+</section>
+<section class="x-mod" aria-label="M4, le foreur">
+<h5>M4 · le foreur</h5>
+<p>Au stade 4, le rover reçoit un bras qui fore. M4 regarde le petit carré de sol sous le bras et décide : forer ici, ou pas. Comme un géologue qui ne veut pas rapporter dix fois le même caillou.</p>
+<dl><dt>Reçoit</dt><dd>la couleur et la texture du carré, sa nouveauté, la batterie, le temps depuis le dernier forage, le soleil, les forages du jour</dd>
+<dt>Taille</dt><dd>10 → 8 → 1 : 97 réglages</dd>
+<dt>Apprend</dt><dd>par évolution, en rejouant les vrais sites du sol ; au plus 6 forages par sol</dd></dl>
+</section>
+<section class="x-mod" aria-label="M5, le classeur">
+<h5>M5 · le classeur</h5>
+<p>Au stade 5, un spectromètre mesure la lumière renvoyée par chaque échantillon, en 16 bandes : son <strong>spectre</strong>. M5 range ces spectres en familles, comme on trie des cailloux par couleur sans savoir combien de tas il faudra.</p>
+<dl><dt>Range</dt><dd>jusqu'à 15 familles ; une famille reçoit un nom à partir de 5 membres</dd>
+<dt>Nature</dt><dd>pas un réseau : un classeur qui place des centres de familles</dd>
+<dt>Apprend</dt><dd>en déplaçant chaque centre vers la moyenne de ses membres</dd></dl>
+</section>
+</div>
+<p>En tout, ses cinq réseaux comptent environ 1&nbsp;100 réglages.</p>
+<p class="x-see"><a href="#fr/live/brain">Voir en direct →</a></p>
+</section>
+
+<section data-sec="learn" aria-labelledby="fr-learn">
+
+<h3 id="fr-learn" tabindex="-1">Comment il apprend</h3>
+<p>Pendant le sol, le cerveau est figé : il agit sans changer. Il apprend <strong>après</strong>, pendant la fin de sol, comme un sportif qui revoit le match le soir. C'est ce que montre la console entre deux sols : le module qui apprend, la génération en cours (par exemple 7 sur 12), la meilleure note et la note moyenne.</p>
+<h4>Par évolution (M0, M3, M4)</h4>
+<p>Entre les réglages du pilote et sa réussite (« suis-je arrivé ? »), il y a tout un simulateur : terrain, glissement, caméra bruitée. Aucune formule ne dit dans quel sens tourner chaque réglage. Alors on essaie :</p>
+<ol>
+<li>on part des réglages actuels, la « recette » ;</li>
+<li>on fabrique 48 variantes légèrement différentes, deux par deux, l'une dans un sens et l'autre dans le sens opposé ;</li>
+<li>chaque variante fait 2 parcours d'essai et reçoit une note : la distance gagnée vers la cible, moins l'énergie dépensée, moins une pénalité si elle se renverse ou s'enlise, plus un bonus à l'arrivée. Toutes roulent sur les mêmes terrains, comme des plats goûtés par le même jury ;</li>
+<li>on classe les variantes : seul l'ordre compte, une variante chanceuse ne peut pas tout emporter ;</li>
+<li>la recette avance d'un petit pas vers les mieux classées.</li>
+</ol>
+<figure class="x-fig">
+<svg class="x-svg" viewBox="0 0 400 236" role="img" aria-labelledby="xf-evo-t xf-evo-d" font-family="ui-monospace,Menlo,Consolas,monospace"><title id="xf-evo-t">Une génération d'évolution</title><desc id="xf-evo-d">À gauche, la recette actuelle du réseau. Au milieu, 48 variantes, par paires de sens opposés ; chacune fait 2 parcours d'essai et reçoit une note. À droite, le classement : seul l'ordre compte. Une flèche revient à la recette : elle avance d'un petit pas vers les variantes les mieux classées. Le module du stade en cours fait 12 générations par sol, les autres 2 d'entretien.</desc><defs><marker id="xf-evo-m" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8z" fill="#ffb347"/></marker></defs><rect x=".5" y=".5" width="399" height="235" fill="#120c0a" stroke="#8a3b1e"/><text x="392" y="15" font-size="10" fill="#c9673a" text-anchor="end">SCHÉMA</text><text x="12" y="30" font-size="13" fill="#ffb347">Une génération d'évolution</text><rect x="10" y="70" width="78" height="40" rx="3" fill="#ffb347" fill-opacity=".15" stroke="#ffb347"/><text x="49.0" y="86.7" font-size="12" fill="#f2c38b" text-anchor="middle">recette</text><text x="49.0" y="101.7" font-size="12" fill="#f2c38b" text-anchor="middle">actuelle</text><path d="M88 90H104" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-evo-m)"/><text x="152" y="52" font-size="11" fill="#f2c38b" text-anchor="middle">48 variantes</text><text x="152" y="64" font-size="10" fill="#d98c4a" text-anchor="middle">(24 paires + / −)</text><path d="M114 74h0M125 74h0M136 74h0M147 74h0M158 74h0M169 74h0M180 74h0M191 74h0M114 81h0M125 81h0M136 81h0M147 81h0M158 81h0M169 81h0M180 81h0M191 81h0M114 88h0M125 88h0M136 88h0M147 88h0M158 88h0M169 88h0M180 88h0M191 88h0" stroke="#ffb347" stroke-width="4.8" stroke-linecap="round"/><path d="M114 95h0M125 95h0M136 95h0M147 95h0M158 95h0M169 95h0M180 95h0M191 95h0M114 102h0M125 102h0M136 102h0M147 102h0M158 102h0M169 102h0M180 102h0M191 102h0M114 109h0M125 109h0M136 109h0M147 109h0M158 109h0M169 109h0M180 109h0M191 109h0" stroke="#6f9fd8" stroke-width="4.8" stroke-linecap="round"/><text x="150" y="128" font-size="10" fill="#d98c4a" text-anchor="middle">2 essais chacune</text><path d="M200 90H214" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-evo-m)"/><text x="260" y="52" font-size="11" fill="#f2c38b" text-anchor="middle">classement</text><rect x="220" y="70" width="70" height="4" fill="#ffb347" fill-opacity="1.00"/><rect x="220" y="77" width="58" height="4" fill="#ffb347" fill-opacity="0.86"/><rect x="220" y="84" width="46" height="4" fill="#ffb347" fill-opacity="0.72"/><rect x="220" y="91" width="34" height="4" fill="#ffb347" fill-opacity="0.58"/><rect x="220" y="98" width="22" height="4" fill="#ffb347" fill-opacity="0.44"/><rect x="220" y="105" width="12" height="4" fill="#ffb347" fill-opacity="0.30"/><text x="268" y="128" font-size="10" fill="#d98c4a" text-anchor="middle">seul l'ordre compte</text><path d="M296 90H336V160H49V112" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-evo-m)"/><text x="192" y="154" font-size="11" fill="#ffb347" text-anchor="middle">un petit pas vers les mieux classées</text><text x="12" y="192" font-size="12" fill="#f2c38b">1 génération = ce cycle : 12 par sol pour le</text><text x="12" y="209" font-size="12" fill="#f2c38b">module du stade en cours, 2 pour les autres.</text></svg>
+<figcaption><span class="x-tag">schéma</span>Une génération. Le module du stade en cours en fait 12 par sol ; les autres en font 2 d'entretien, pour ne pas oublier.</figcaption>
+</figure>
+<h4>Par gradient (M1)</h4>
+<p>L'erreur de M1 est une simple formule : sa prédiction moins ce qui s'est vraiment passé. On peut donc calculer directement dans quel sens corriger chaque réglage, comme un randonneur dans le brouillard qui sent la pente sous ses pieds.</p>
+<h4>Sans note (M2) et par tri (M5)</h4>
+<p>M2 suit une règle fixe qui fait émerger, image après image, les grandes tendances des images. M5 déplace ses centres de familles vers la moyenne de leurs membres.</p>
+<h4>Le filet de sécurité</h4>
+<p>À partir du stade 2, le rover repasse le même examen à chaque sol (un sur quatre en consolidation) : 20 parcours fixes, réussis s'il arrive à la cible en 300 pas au plus, sans se renverser ni s'enliser. Si son score tombe deux fois de suite sous 80&nbsp;% du meilleur de ses 5 dernières mesures, le pilote revient à sa meilleure version sauvegardée.</p>
+<details>
+<summary>Pour aller plus loin</summary>
+<ul>
+<li>L'écraseur est la fonction <em>softsign</em>, v / (1 + |v|). Elle n'utilise qu'une addition, une division et une valeur absolue : son résultat est identique au bit près sur toutes les machines.</li>
+<li>Évolution : méthode « OpenAI-ES » (Salimans et al., 2017). 24 directions de bruit ε, candidats θ ± 0,05·ε ; les notes deviennent des rangs centrés entre −0,5 et +0,5 ; la direction est la somme des (rang du « plus » − rang du « moins ») × ε, divisée par 48 × 0,05 ; l'optimiseur Adam avance d'un pas de 0,03.</li>
+<li>Note d'un parcours de M0, sur 160 pas : progrès − 0,002 × effort − 2 si renversé − 1 si enlisé + 5 à l'arrivée.</li>
+<li>M1 : rétropropagation écrite à la main, optimiseur Adam (pas de 0,01), 200 pas d'entraînement par sol au stade 1, 50 ensuite ; sa justesse, le R², est mesurée sur des sols mis de côté.</li>
+<li>M2 : règle de Sanger, une analyse en composantes principales calculée image après image.</li>
+<li>M5 : k-moyennes à démarrage chaud (10 itérations de Lloyd), sans aucun tirage au hasard ; un spectre à plus de 0,25 de tous les centres ouvre une nouvelle famille ; la stabilité se mesure par l'indice de Rand ajusté (ARI), calculé en nombres entiers.</li>
+<li>Hasard : un générateur maison à base d'entiers (splitmix64). Mêmes entrées, mêmes octets.</li>
+</ul>
+</details>
+</section>
+
+<section data-sec="camera" aria-labelledby="fr-camera">
+
+<h3 id="fr-camera" tabindex="-1">CAM-1 : ce que voit le cerveau</h3>
+<p>La caméra du rover, <strong>CAM-1</strong>, ne produit pas des couleurs mais des <strong>numéros</strong> : chaque pixel vaut de 0 à 23, une case dans une palette de 24 teintes (sols, ciel, ombres). C'est de la peinture par numéros : le cerveau lit les numéros, ou plus exactement la clarté attachée à chacun, et la console les peint pour vous.</p>
+<p><strong>L'image affichée est l'entrée du cerveau.</strong> C'est le même tableau de numéros, chaque pixel simplement agrandi en bloc. Les lignes de balayage assombrissent une ligne sur deux de façon réversible, et un test vérifie, pixel par pixel, que l'image publiée redonne exactement l'enregistrement. Une seule chose n'est pas dessinée : la distance de chaque pixel, que le cerveau lit aussi.</p>
+<figure class="x-fig">
+<svg class="x-svg" viewBox="0 0 400 236" role="img" aria-labelledby="xf-image-t xf-image-d" font-family="ui-monospace,Menlo,Consolas,monospace"><title id="xf-image-t">L'image est l'entrée du cerveau</title><desc id="xf-image-d">Une petite grille de numéros de 0 à 23, chacun colorié avec sa couleur de palette. Une flèche mène à la console, qui peint ces numéros pour vous ; une autre mène à M2, qui en tire 40 mesures puis 8 nombres, lus par M0, le pilote. Un seul tableau : ce que vous voyez est ce que lit le cerveau. Numéros d'exemple.</desc><defs><marker id="xf-image-m" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8z" fill="#ffb347"/></marker></defs><rect x=".5" y=".5" width="399" height="235" fill="#120c0a" stroke="#8a3b1e"/><text x="392" y="15" font-size="10" fill="#c9673a" text-anchor="end">SCHÉMA</text><text x="12" y="30" font-size="13" fill="#ffb347">L'image est l'entrée du cerveau</text><text x="12" y="50" font-size="11" fill="#f2c38b">CAM-1 : des numéros</text><text x="12" y="63" font-size="10" fill="#d98c4a">(0 à 23, exemple)</text><rect x="14" y="72" width="32" height="32" fill="#c9673a"/><text x="30" y="93" font-size="12" fill="#120c0a" text-anchor="middle">20</text><rect x="46" y="72" width="32" height="32" fill="#c9673a"/><text x="62" y="93" font-size="12" fill="#120c0a" text-anchor="middle">20</text><rect x="78" y="72" width="32" height="32" fill="#d8854f"/><text x="94" y="93" font-size="12" fill="#120c0a" text-anchor="middle">19</text><rect x="110" y="72" width="32" height="32" fill="#d8854f"/><text x="126" y="93" font-size="12" fill="#120c0a" text-anchor="middle">19</text><rect x="14" y="104" width="32" height="32" fill="#f2c38b"/><text x="30" y="125" font-size="12" fill="#120c0a" text-anchor="middle">15</text><rect x="46" y="104" width="32" height="32" fill="#f7d3a5"/><text x="62" y="125" font-size="12" fill="#120c0a" text-anchor="middle">16</text><rect x="78" y="104" width="32" height="32" fill="#b28c65"/><text x="94" y="125" font-size="12" fill="#120c0a" text-anchor="middle">14</text><rect x="110" y="104" width="32" height="32" fill="#f2c38b"/><text x="126" y="125" font-size="12" fill="#120c0a" text-anchor="middle">15</text><rect x="14" y="136" width="32" height="32" fill="#d98c4a"/><text x="30" y="157" font-size="12" fill="#120c0a" text-anchor="middle">9</text><rect x="46" y="136" width="32" height="32" fill="#9e6434"/><text x="62" y="157" font-size="12" fill="#f2c38b" text-anchor="middle">8</text><rect x="78" y="136" width="32" height="32" fill="#8a3b1e"/><text x="94" y="157" font-size="12" fill="#f2c38b" text-anchor="middle">3</text><rect x="110" y="136" width="32" height="32" fill="#d98c4a"/><text x="126" y="157" font-size="12" fill="#120c0a" text-anchor="middle">9</text><rect x="14" y="72" width="128" height="96" fill="none" stroke="#d98c4a"/><rect x="196" y="50" width="194" height="40" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="293.0" y="66.7" font-size="12" fill="#f2c38b" text-anchor="middle">la console</text><text x="293.0" y="81.7" font-size="12" fill="#f2c38b" text-anchor="middle">les peint pour vous</text><rect x="196" y="108" width="194" height="40" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="293.0" y="124.7" font-size="12" fill="#f2c38b" text-anchor="middle">M2 : 40 mesures</text><text x="293.0" y="139.7" font-size="12" fill="#f2c38b" text-anchor="middle">puis 8 nombres</text><rect x="196" y="166" width="194" height="40" rx="3" fill="#ffb347" fill-opacity=".15" stroke="#ffb347"/><text x="293.0" y="182.7" font-size="12" fill="#f2c38b" text-anchor="middle">M0, le pilote</text><text x="293.0" y="197.7" font-size="12" fill="#f2c38b" text-anchor="middle">les lit</text><path d="M142 96L194 72" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-image-m)"/><path d="M142 120L194 126" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-image-m)"/><path d="M293 148V164" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-image-m)"/><text x="12" y="224" font-size="12" fill="#ffb347">Un seul tableau : vous voyez ce qu'il lit.</text></svg>
+<figcaption><span class="x-tag">schéma</span>Les numéros de la grille sont un exemple ; leurs couleurs sont celles de la vraie palette.</figcaption>
+</figure>
+<p><strong>Une photo tous les 8 pas</strong>, soit 150 par sol : en direct, une nouvelle image toutes les 4,8 à 5,6 secondes. Entre deux photos, l'image reste la même, tandis que la télémétrie et le cerveau changent à chaque pas.</p>
+<p><strong>La vue s'affine avec les stades</strong> : 8 × 6 pixels aux stades 0 et 1, 32 × 20 au stade 2, 80 × 50 au stade 3, 160 × 100 aux stades 4 et 5. Pourquoi si peu ? L'apprentissage par essais ne sait régler que quelques centaines de nombres : M2 doit donc résumer l'image en 8. Au stade 0, aucun module ne lit encore la caméra, et la console l'indique.</p>
+<figure class="x-fig">
+<img class="x-img x-img-m" src="about/img/cam1-par-stade.png" width="676" height="488" loading="lazy" decoding="async" alt="Quatre images CAM-1 d'un rover d'essai : au stade 0 une grille de 8 sur 6 pixels marquée vision hors ligne, au stade 1 une vue de 8 sur 6, au stade 2 une vue de 32 sur 20 avec un réticule, au stade 3 une vue de 80 sur 50 avec un horizon et des cailloux.">
+<figcaption><span class="x-tag">image d'essai, pas Sol-0</span>Vraies sorties du moteur, mais d'un rover d'essai : graine de test 20261111, ancienne cadence de 4 sols par jour (2026-11-11). CAM-1 aux stades 0, 1, 2 et 3. Ces images ne viennent pas de la vie de Sol-0.</figcaption>
+</figure>
+<figure class="x-fig">
+<img class="x-img x-img-m" src="about/img/cam1-memes-endroits.png" width="1080" height="416" loading="lazy" decoding="async" alt="Planche de 24 vues : six endroits en colonnes, vus en plein jour avec l'acuité des stades 0 à 3 en lignes ; plus le stade est élevé, plus le relief et les cailloux se distinguent.">
+<figcaption><span class="x-tag">image d'essai, pas Sol-0</span>Les mêmes six endroits d'un monde d'essai (graine 20261111), vus en plein jour avec l'acuité des stades 0 à 3 : une colonne par endroit, une ligne par stade. Vraie caméra, mais pas des sols vécus.</figcaption>
+</figure>
+<p class="x-see"><a href="#fr/live/cam">Voir en direct →</a></p>
+</section>
+
+<section data-sec="stages" aria-labelledby="fr-stages">
+
+<h3 id="fr-stages" tabindex="-1">Les stades et leurs examens</h3>
+<p>Les stades sont des années d'école. Pour passer au suivant, il faut <strong>les deux</strong> : réussir l'examen du stade (son <strong>critère</strong>) et y avoir passé une durée minimale. Réussir dès la rentrée ne fait pas sauter la classe.</p>
+<div class="x-tw">
+<table>
+<caption class="x-sr">Les six stades, leur examen et leur durée minimale</caption>
+<thead><tr><th scope="col">Stade</th><th scope="col">Ce qu'il apprend</th><th scope="col">Examen</th><th scope="col">Durée min.</th></tr></thead>
+<tbody>
+<tr><td>0 · réveil</td><td>bouger au hasard et noter ce que font ses gestes</td><td>200 couples « geste → effet » enregistrés</td><td>6 h</td></tr>
+<tr><td>1 · je bouge</td><td>prédire l'effet de ses roues (M1) ; l'œil (M2) s'éveille</td><td>justesse de M1 : R² ≥ 0,70 trois sols de suite (1 = parfait, 0 = pas mieux que la moyenne)</td><td>12 h</td></tr>
+<tr><td>2 · conduire</td><td>rejoindre une cible en se servant de la caméra (M0)</td><td>16 parcours réussis sur 20 à l'examen</td><td>7 jours</td></tr>
+<tr><td>3 · énergie</td><td>gérer la batterie, le jour et la nuit (M3)</td><td>20 sols de suite sans panne, en roulant</td><td>14 jours</td></tr>
+<tr><td>4 · échantillons</td><td>choisir où forer (M4)</td><td>sur ses 150 derniers forages, au moins 26 échantillons nouveaux de plus qu'un foreur au hasard sur le même trajet</td><td>14 jours</td></tr>
+<tr><td>5 · analyse</td><td>ranger les roches en familles (M5)</td><td>des familles stables (ARI ≥ 0,8) pendant 10 sols valides de suite</td><td>60 jours</td></tr>
+</tbody>
+</table>
+</div>
+<figure class="x-fig">
+<svg class="x-svg" viewBox="0 0 400 316" role="img" aria-labelledby="xf-stages-t xf-stages-d" font-family="ui-monospace,Menlo,Consolas,monospace"><title id="xf-stages-t">Les stades : durées minimales</title><desc id="xf-stages-d">Échelle de six stades. Stade 0, réveil : au moins 6 heures, entrée à la naissance. Stade 1, je bouge : au moins 12 heures, au plus tôt après 6 heures. Stade 2, conduire : au moins 7 jours, au plus tôt après 18 heures. Stade 3, énergie : au moins 14 jours, au plus tôt au jour 7,75. Stade 4, échantillons : au moins 14 jours, au plus tôt au jour 21,75. Stade 5, analyse : au moins 60 jours, au plus tôt au jour 35,75. Consolidation au plus tôt au jour 95,75. Ce sont des minimums, pas des prévisions.</desc><defs><marker id="xf-stages-m" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8z" fill="#ffb347"/></marker></defs><rect x=".5" y=".5" width="399" height="315" fill="#120c0a" stroke="#8a3b1e"/><text x="392" y="15" font-size="10" fill="#c9673a" text-anchor="end">SCHÉMA</text><text x="12" y="30" font-size="13" fill="#ffb347">Les stades : durées minimales</text><text x="12" y="54" font-size="10" fill="#d98c4a">stade</text><text x="232" y="54" font-size="10" fill="#d98c4a" text-anchor="end">durée min.</text><text x="388" y="54" font-size="10" fill="#d98c4a" text-anchor="end">au plus tôt</text><path d="M25 88v8M25 120v8M25 152v8M25 184v8M25 216v8" stroke="#d98c4a" stroke-width="2"/><rect x="12" y="64" width="26" height="24" rx="3" fill="#ffb347" fill-opacity="0.12" stroke="#ffb347"/><text x="25" y="81" font-size="13" fill="#f2c38b" text-anchor="middle" font-weight="bold">0</text><text x="48" y="81" font-size="13" fill="#f2c38b">réveil</text><text x="232" y="81" font-size="13" fill="#ffb347" text-anchor="end">≥ 6 h</text><text x="388" y="81" font-size="12" fill="#f2c38b" text-anchor="end">naissance</text><rect x="12" y="96" width="26" height="24" rx="3" fill="#ffb347" fill-opacity="0.20" stroke="#ffb347"/><text x="25" y="113" font-size="13" fill="#f2c38b" text-anchor="middle" font-weight="bold">1</text><text x="48" y="113" font-size="13" fill="#f2c38b">je bouge</text><text x="232" y="113" font-size="13" fill="#ffb347" text-anchor="end">≥ 12 h</text><text x="388" y="113" font-size="12" fill="#f2c38b" text-anchor="end">6 h</text><rect x="12" y="128" width="26" height="24" rx="3" fill="#ffb347" fill-opacity="0.28" stroke="#ffb347"/><text x="25" y="145" font-size="13" fill="#f2c38b" text-anchor="middle" font-weight="bold">2</text><text x="48" y="145" font-size="13" fill="#f2c38b">conduire</text><text x="232" y="145" font-size="13" fill="#ffb347" text-anchor="end">≥ 7 j</text><text x="388" y="145" font-size="12" fill="#f2c38b" text-anchor="end">18 h</text><rect x="12" y="160" width="26" height="24" rx="3" fill="#ffb347" fill-opacity="0.36" stroke="#ffb347"/><text x="25" y="177" font-size="13" fill="#f2c38b" text-anchor="middle" font-weight="bold">3</text><text x="48" y="177" font-size="13" fill="#f2c38b">énergie</text><text x="232" y="177" font-size="13" fill="#ffb347" text-anchor="end">≥ 14 j</text><text x="388" y="177" font-size="12" fill="#f2c38b" text-anchor="end">jour 7,75</text><rect x="12" y="192" width="26" height="24" rx="3" fill="#ffb347" fill-opacity="0.44" stroke="#ffb347"/><text x="25" y="209" font-size="13" fill="#f2c38b" text-anchor="middle" font-weight="bold">4</text><text x="48" y="209" font-size="13" fill="#f2c38b">échantillons</text><text x="232" y="209" font-size="13" fill="#ffb347" text-anchor="end">≥ 14 j</text><text x="388" y="209" font-size="12" fill="#f2c38b" text-anchor="end">jour 21,75</text><rect x="12" y="224" width="26" height="24" rx="3" fill="#ffb347" fill-opacity="0.52" stroke="#ffb347"/><text x="25" y="241" font-size="13" fill="#f2c38b" text-anchor="middle" font-weight="bold">5</text><text x="48" y="241" font-size="13" fill="#f2c38b">analyse</text><text x="232" y="241" font-size="13" fill="#ffb347" text-anchor="end">≥ 60 j</text><text x="388" y="241" font-size="12" fill="#f2c38b" text-anchor="end">jour 35,75</text><text x="12" y="276" font-size="12" fill="#d98c4a">consolidation : au plus tôt jour 95,75</text><text x="12" y="302" font-size="12" fill="#c9673a">Des minimums, pas des prévisions.</text></svg>
+<figcaption><span class="x-tag">schéma</span>Les durées minimales et les entrées au plus tôt, comptées depuis la naissance.</figcaption>
+</figure>
+<p class="x-note"><strong>Ce sont des minimums, pas des dates prévues.</strong> Personne ne sait quand Sol-0 franchira réellement ces étapes : sa vie n'a jamais été jouée d'avance, et chaque arrêt du serveur décale tout.</p>
+<p><strong>La barre ne ment pas.</strong> Elle plafonne à 99&nbsp;% tant que le stade n'a pas changé. Quand l'examen est réussi mais que la durée minimale n'est pas écoulée, elle le dit et affiche le temps restant.</p>
+<p><strong>Personne ne redouble, personne n'est poussé.</strong> Si un stade dure trop (3 fois, puis 5 fois la durée visée), le seuil de l'examen baisse de 10&nbsp;%. Il n'y a jamais de passage forcé.</p>
+<p><strong>Après le stade 5</strong>, le code actuel s'arrête : le rover entre en <strong>consolidation</strong>. Il entretient ce qu'il sait, en attendant une mise à jour de son programme. Une suite est conçue, mais pas encore construite.</p>
+</section>
+
+<section data-sec="console" aria-labelledby="fr-console">
+
+<h3 id="fr-console" tabindex="-1">La console, panneau par panneau</h3>
+<figure class="x-fig">
+<img class="x-img x-img-m" src="about/img/console-annotee.png" width="1280" height="720" loading="lazy" decoding="async" alt="Console de Sol-0 annotée de 12 pastilles numérotées : titre, image CAM-1, surimpressions, barres de M2, réseau M0, M1, M3, commandes des roues, intention et modules, carte locale, télémétrie, instrument.">
+<figcaption><span class="x-tag">image d'essai, pas Sol-0</span>Vraie image du moteur, d'un rover d'essai (graine de test 20261111, sol 86, stade 3, ancienne cadence de 4 sols par jour) ; seules les pastilles numérotées sont ajoutées. Sa date vient de l'horloge simulée de cet essai. Les libellés y sont en anglais, comme dans les images publiées sur le profil ; sur cette page, ils suivent la langue choisie.</figcaption>
+</figure>
+<ol>
+<li><strong>Titre</strong> : numéro du sol, stade, heure du dernier contact.</li>
+<li><strong>CAM-1</strong> : ce que voit le rover, c'est-à-dire ce que lit son cerveau.</li>
+<li><strong>Surimpressions</strong> : heure du sol, batterie, jauge du soleil, résolution de la caméra.</li>
+<li><strong>M2</strong> : 40 petites barres, les 40 mesures tirées de l'image.</li>
+<li><strong>M0</strong> : à gauche les entrées (ambre : positif ; bleu : négatif), au milieu les 16 neurones cachés, à droite les sorties. Les traits sont les connexions qui pèsent le plus à cet instant : leur luminosité vaut |poids × entrée|, et un pointillé signale un apport négatif.</li>
+<li><strong>M1</strong> : ce que le prédicteur attendait, face à ce qui s'est vraiment passé.</li>
+<li><strong>M3</strong> : ses trois choix, rouler, soleil ou dormir.</li>
+<li><strong>Roues</strong> : L et R, la commande réellement envoyée ; XI, le petit hasard ajouté pour qu'il essaie des gestes nouveaux.</li>
+<li><strong>Intention et modules</strong> : le mode en cours ; les modules éveillés, et « ??? » pour ceux pas encore découverts.</li>
+<li><strong>Carte locale</strong> : 60 × 60 cases (300&nbsp;m de côté) autour du rover, ce qu'il a exploré et ce qu'il voit.</li>
+<li><strong>Télémétrie</strong> : les mesures du corps, vitesse (cm/s), batterie, inclinaison, glissement. La batterie s'affiche à partir du stade 3, quand le cerveau commence à la sentir.</li>
+<li><strong>Instrument</strong> : vide jusqu'au stade 3. Au stade 4, le <strong>bras</strong> : le carré de 16 × 16 pixels sous le bras (exactement ce que lit M4), les 5 mesures de l'échantillon foré (dureté, rouge, vert, bleu, grain), son gain de nouveauté, la sortie de M4 et le nombre de forages du sol. Au stade 5, le <strong>SCAN</strong> : le spectre en 16 bandes, le nuage des échantillons analysés (une forme par famille) et la famille du dernier.</li>
+</ol>
+<figure class="x-fig">
+<img class="x-img x-img-s" src="about/img/map-sol86.png" width="640" height="400" loading="lazy" decoding="async" alt="Grande carte d'un rover d'essai : un long trajet en diagonale depuis un triangle de départ jusqu'à un cercle, sur fond noir, avec une échelle de 5 kilomètres.">
+<figcaption><span class="x-tag">image d'essai, pas Sol-0</span>La grande carte publiée sur le profil (map.png), d'un rover d'essai (graine 20261111, sol 86, ancienne cadence) : triangle = départ, cercle = rover, brun = exploré, orange = vu pendant ce sol, noir = inconnu.</figcaption>
+</figure>
+<p>Sur la page, chaque panneau s'ouvre en plus grand d'un clic, d'un toucher ou avec la touche Entrée, et se referme avec Échap.</p>
+<p class="x-see"><a href="#fr/live">Voir en direct →</a></p>
+</section>
+
+<section data-sec="live" aria-labelledby="fr-live">
+
+<h3 id="fr-live" tabindex="-1">Ce que veut dire « en direct »</h3>
+<p>Sol-0 tourne sur un <strong>serveur</strong> : un ordinateur Linux loué, en Europe, allumé jour et nuit. Le vrai moteur y calcule chaque pas <strong>à son heure</strong>, jamais en avance : un pas n'existe pas avant le moment où il est dû.</p>
+<p>Dès qu'un pas est calculé, le serveur l'envoie dans un flux continu, depuis live.sol0.fr, à toutes les pages ouvertes. Votre page le dessine tel quel : pas d'interpolation, pas d'animation inventée. La console change d'un coup à chaque pas, au plus deux fois par seconde.</p>
+<figure class="x-fig">
+<svg class="x-svg" viewBox="0 0 400 290" role="img" aria-labelledby="xf-live-t xf-live-d" font-family="ui-monospace,Menlo,Consolas,monospace"><title id="xf-live-t">Du serveur à votre écran</title><desc id="xf-live-d">Sur le serveur, allumé jour et nuit, le moteur calcule le monde et le cerveau pas à pas ; chaque pas produit des valeurs enregistrées. Elles partent aussitôt dans le flux vers votre page, qui dessine chaque pas. Les images du sol sont dessinées d'après les mêmes valeurs et publiées sur GitHub environ toutes les 6 heures, où elles rejouent un sol récent ; le journal s'y écrit. Le dessin ne lit que les valeurs enregistrées.</desc><defs><marker id="xf-live-m" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8z" fill="#ffb347"/></marker></defs><rect x=".5" y=".5" width="399" height="289" fill="#120c0a" stroke="#8a3b1e"/><text x="392" y="15" font-size="10" fill="#c9673a" text-anchor="end">SCHÉMA</text><text x="12" y="30" font-size="13" fill="#ffb347">Du serveur à votre écran</text><rect x="10" y="42" width="380" height="124" rx="4" fill="#8a3b1e" fill-opacity=".18" stroke="#d98c4a"/><text x="20" y="60" font-size="11" fill="#ffb347">SERVEUR · ALLUMÉ 24 H/24</text><rect x="20" y="72" width="96" height="40" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="68.0" y="88.7" font-size="12" fill="#f2c38b" text-anchor="middle">monde</text><text x="68.0" y="103.7" font-size="12" fill="#f2c38b" text-anchor="middle">+ cerveau</text><rect x="140" y="72" width="120" height="40" rx="3" fill="#120c0a" stroke="#ffb347"/><text x="200.0" y="88.7" font-size="12" fill="#f2c38b" text-anchor="middle">valeurs</text><text x="200.0" y="103.7" font-size="12" fill="#f2c38b" text-anchor="middle">de chaque pas</text><rect x="290" y="72" width="88" height="40" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="334.0" y="96.2" font-size="12" fill="#f2c38b" text-anchor="middle">flux</text><rect x="140" y="124" width="120" height="34" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="200.0" y="138.0" font-size="11" fill="#f2c38b" text-anchor="middle">images</text><text x="200.0" y="151.7" font-size="11" fill="#f2c38b" text-anchor="middle">du sol</text><path d="M116 92H138" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-live-m)"/><path d="M260 92H288" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-live-m)"/><path d="M200 112V122" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-live-m)"/><rect x="220" y="196" width="170" height="44" rx="3" fill="#ffb347" fill-opacity=".15" stroke="#ffb347"/><text x="305.0" y="214.7" font-size="12" fill="#f2c38b" text-anchor="middle">votre page</text><text x="305.0" y="229.7" font-size="12" fill="#f2c38b" text-anchor="middle">dessine chaque pas</text><rect x="10" y="196" width="190" height="44" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="105.0" y="215.0" font-size="11" fill="#f2c38b" text-anchor="middle">GitHub · toutes les 6 h</text><text x="105.0" y="228.7" font-size="11" fill="#f2c38b" text-anchor="middle">images rejouées · journal</text><path d="M334 112V194" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-live-m)"/><text x="340" y="182" font-size="11" fill="#ffb347">aussitôt</text><path d="M180 158V194" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xf-live-m)"/><text x="174" y="182" font-size="11" fill="#d98c4a" text-anchor="end">publié</text><text x="12" y="272" font-size="12" fill="#c9673a">Le dessin ne lit que les valeurs enregistrées.</text></svg>
+<figcaption><span class="x-tag">schéma</span>Le même calcul nourrit le direct, les images du profil et le journal.</figcaption>
+</figure>
+<h4>L'âge de la donnée</h4>
+<p>La page indique l'<strong>âge de la donnée</strong> : depuis combien de secondes existe la chose la plus ancienne affichée. Une photo CAM-1 n'arrive que tous les 8 pas, elle peut donc être plus vieille que la télémétrie. Après une coupure ou un redémarrage, cet âge peut grandir : la page le montre au lieu de le cacher.</p>
+<h4>Ce que dit le bandeau</h4>
+<dl class="x-states">
+<dt><span class="x-lbl">CONNEXION</span></dt><dd>La page se branche au flux et reçoit d'abord l'état exact du sol en cours.</dd>
+<dt><span class="x-lbl">EN DIRECT</span></dt><dd>Chaque pas arrive au moment où il est calculé.</dd>
+<dt><span class="x-lbl">APPRENTISSAGE</span></dt><dd>Fin de sol : la console montre les générations d'apprentissage, puis le bilan du sol et l'heure du suivant.</dd>
+<dt><span class="x-lbl">MOTEUR SILENCIEUX</span></dt><dd>Aucune nouvelle du moteur depuis 2 minutes, ou plus de 5 secondes sans pas pendant le sol. La page garde la dernière image et affiche depuis quand. Rien n'est inventé pour combler le vide.</dd>
+<dt><span class="x-lbl">REPRISE</span></dt><dd>Le serveur a redémarré en plein sol. Le sol inachevé est recalculé depuis ses entrées jusqu'au pas dû ; il doit redonner exactement les mêmes octets, ce que le moteur vérifie avec une empreinte.</dd>
+<dt><span class="x-lbl">MOTEUR EN PAUSE</span></dt><dd>Le moteur a refusé de continuer plutôt que de réparer en silence : par exemple une empreinte différente après un redémarrage, un contrôle de sa mémoire en échec, ou un disque plein. Aucun sol n'est plus calculé jusqu'à ce qu'un humain le relance ; sa mémoire n'est pas touchée.</dd>
+<dt><span class="x-lbl">SERVEUR OCCUPÉ</span></dt><dd>Le serveur refuse un moment la connexion, par exemple quand trop de spectateurs arrivent à la fois : la page réessaie toute seule.</dd>
+<dt><span class="x-lbl">HORS LIGNE</span></dt><dd>Le serveur ne répond plus (3 échecs de suite). La page montre le dernier sol publié sur GitHub, marqué comme enregistré et non en direct, et réessaie chaque minute.</dd>
+</dl>
+<p><strong>Les créneaux manqués ne sont jamais rattrapés.</strong> Si le serveur s'arrête, les sols qui auraient dû avoir lieu n'existent pas : ils sont comptés, et le journal le dit dès qu'une heure entière manque. Le numéro du sol vient de la mémoire du rover, jamais de l'horloge.</p>
+</section>
+
+<section data-sec="real" aria-labelledby="fr-real">
+
+<h3 id="fr-real" tabindex="-1">Tout est réel</h3>
+<p>C'est la règle du projet. Pendant chaque sol, une <strong>trace</strong> enregistre tout : chaque image, chaque neurone, chaque commande, la position, la batterie. C'est la boîte noire d'un avion, consultée à chaque sol et pas seulement après un accident.</p>
+<p>Les images et la console sont dessinées <strong>uniquement</strong> d'après ces valeurs enregistrées ; en direct, d'après le flux, qui porte les mêmes. Le code qui dessine n'a pas le droit d'appeler le monde, la physique ni le cerveau : un test l'interdit. D'autres tests vérifient que changer une activation dans la trace change le point dessiné. Même les défauts se voient : s'il recule, patine ou s'endort au mauvais moment, la console le montre.</p>
+<p>Sur cette page, deux sortes d'images ne sont pas des données de Sol-0, et chacune le dit : les <strong>schémas</strong>, dessins d'explication, et les <strong>images d'essai</strong>, vraies sorties du moteur mais d'un rover de test sur une autre graine. La bande-annonce de Sol-0 est une <strong>illustration</strong> : dessinée une fois, marquée comme telle, elle ne montre rien au-delà du réveil.</p>
+<figure class="x-fig">
+<img class="x-img x-img-s" src="about/img/bande-annonce-image180.png" width="640" height="360" loading="lazy" decoding="async" alt="Image de la bande-annonce en pixel art : un robot à roues muni d'un mât et d'une caméra, dans un désert rouille, marqué ILLUSTRATION.">
+<figcaption><span class="x-tag">illustration</span>Une image de la bande-annonce. Ce robot à roues et à mât est une mise en scène : les vraies images ne montrent jamais Sol-0 de l'extérieur ; sur la carte, c'est un cercle.</figcaption>
+</figure>
+<h4>Personne n'a vu sa vie avant vous</h4>
+<p>Sol-0 est né le <strong>13 novembre 2026 à 12:11:21 UTC</strong>, au moment de sa mise en ligne. Son monde et son cerveau de départ viennent d'un nombre, sa <strong>graine de naissance</strong>, tiré de cet instant par un calcul fixe (une empreinte SHA-256 de l'heure). Ce nombre n'existait pas avant, et personne n'a joué sa vie à l'avance : les essais du projet ont utilisé d'autres graines, jamais la sienne, seulement pour tester la machine. Ce que Sol-0 vivra, on le découvre en même temps que vous.</p>
+<p>Une fois écrite, cette graine ne change plus : un redémarrage du serveur reprend la même vie, jamais une nouvelle naissance.</p>
+<h4>Les mêmes calculs partout</h4>
+<p>Mêmes entrées, mêmes octets : n'importe quel sol peut être rejoué à l'identique, sur l'ordinateur de développement comme sur le serveur. Avant la naissance, 68 empreintes de calcul ont été comparées entre les deux machines : toutes identiques. C'est ce qui permet de reprendre un sol interrompu sans rien changer, et de croire ce qui est publié.</p>
+</section>
+
+<section data-sec="journal" aria-labelledby="fr-journal">
+
+<h3 id="fr-journal" tabindex="-1">Le journal et les images du profil</h3>
+<p>Le serveur <strong>publie lui-même</strong> sur le profil GitHub, environ toutes les 6 heures et aussitôt après un sol marquant : les trois images d'un sol récent (la console animée, le bandeau d'avancement, la carte) et la mémoire du rover sur une branche à part, le journal sur la branche principale.</p>
+<p>Ces images <strong>rejouent</strong> donc un sol récent, de moins de 6 heures : c'est un enregistrement, pas le direct. Le direct, c'est cette page. Les textes dessinés dans ces images restent en anglais.</p>
+<p>Le <strong>journal</strong> est bilingue, sobre, à la première personne : c'est la voix du rover. Il n'est pas écrit par un modèle de langage : ce sont des phrases à trous remplies avec des faits mesurés. Il reçoit un résumé par jour (UTC) et une entrée immédiate pour une première fois, un changement de stade ou un incident.</p>
+</section>
+
+<section data-sec="faq" aria-labelledby="fr-faq">
+
+<h3 id="fr-faq" tabindex="-1">Questions fréquentes</h3>
+<details>
+<summary>Pourquoi tout est-il si lent ?</summary>
+<p>Parce que c'est le rythme réel du rover. Un pas, ce sont 72 secondes de sa journée, et il roule au plus à environ 1,7&nbsp;cm/s : un rover prudent sur une planète inconnue. Sa journée de 24 heures est pourtant jouée en 12 à 14 minutes, 100 à 120 fois plus vite que la nôtre ; à l'intérieur de ce rythme, rien n'est accéléré ni sauté. Apprendre prend aussi du temps : au moins une semaine pour savoir conduire, deux pour gérer son énergie.</p>
+</details>
+<details>
+<summary>Pourquoi l'image est-elle noire la nuit ?</summary>
+<p>Aux stades 0 à 2, le rover dort la nuit : caméra éteinte, cerveau à zéro, et la page indique quand le soleil se lève. À partir du stade 3, c'est M3 qui décide : dormir, ou continuer dans le noir. Même éveillé, une image de nuit est sombre et bruitée.</p>
+</details>
+<details>
+<summary>Sol-0 peut-il mourir ?</summary>
+<p>Non. Il peut tomber en panne de batterie, sous 15&nbsp;% : il dort alors de force jusqu'à 40&nbsp;%. Il peut s'enliser ou se renverser : au début du sol suivant, un mode de secours le dégage, ou le remet sur ses roues contre 10&nbsp;% de batterie ; si sa batterie est restée vide tout un sol, ce mode la remonte à 40&nbsp;%. Si le serveur s'arrête, sa mémoire, enregistrée après chaque sol et publiée sur GitHub environ toutes les 6 heures, reste là : il reprend la même vie.</p>
+</details>
+<details>
+<summary>Quelqu'un le pilote-t-il ?</summary>
+<p>Non, ni l'équipe du projet ni les visiteurs. Ses cibles sont tirées par le programme et ses gestes viennent de ses réseaux. Les seules interventions humaines sont l'entretien du serveur et, parfois, une mise à jour du programme entre deux sols, que le journal signale.</p>
+</details>
+<details>
+<summary>Est-ce une IA comme ChatGPT ?</summary>
+<p>Pas à la même échelle. Les cinq réseaux de Sol-0 totalisent environ 1&nbsp;100 réglages ; GPT-3, un ancêtre publié en 2020, en avait 175 milliards. Sol-0 n'a jamais lu un texte : il apprend de ce qu'il vit, surtout par essais.</p>
+</details>
+<details>
+<summary>Pourquoi des images si pixelisées ?</summary>
+<p>Parce que c'est exactement ce que voit son cerveau, et qu'il doit rester petit pour apprendre par essais. Sa vue s'affine avec les stades, jusqu'à 160 × 100 pixels.</p>
+</details>
+<details>
+<summary>Que se passe-t-il au stade 5 ?</summary>
+<p>Le rover analyse ses échantillons et apprend à les ranger en familles. Après l'examen et la durée minimale du stade (60 jours au moins), il entre en consolidation : il entretient ce qu'il sait, en attendant une mise à jour de son programme. Quand y arrivera-t-il ? Personne ne le sait.</p>
+</details>
+<details>
+<summary>Les images du profil GitHub sont-elles en direct ?</summary>
+<p>Non : elles rejouent un sol récent, de moins de 6 heures. Le direct, c'est ici.</p>
+</details>
+<details>
+<summary>Pourquoi l'heure est-elle donnée en UTC ?</summary>
+<p>Les créneaux sont calés sur le temps universel, le même pour tous. En hiver, l'heure de Paris a une heure d'avance sur l'UTC, deux en été.</p>
+</details>
+<details>
+<summary>Que voit-on entre deux sols ?</summary>
+<p>L'apprentissage réel : le module qui apprend, chaque génération avec sa meilleure note et sa note moyenne, le résultat de l'examen quand il a lieu, puis le bilan du sol et l'heure du suivant.</p>
+</details>
+</section>
+
+<section data-sec="glossary" aria-labelledby="fr-glossary">
+
+<h3 id="fr-glossary" tabindex="-1">Petit glossaire</h3>
+<dl class="x-gloss">
+<dt>Sol</dt><dd>une journée de 24 heures de la planète ; en direct, un sol toutes les 15 minutes.</dd>
+<dt>Pas</dt><dd>72 secondes de la journée du rover, une décision des roues ; 1&nbsp;200 par sol.</dd>
+<dt>Créneau</dt><dd>les 15 minutes, calées sur l'UTC, pendant lesquelles un sol est vécu.</dd>
+<dt>Graine</dt><dd>le nombre d'où le monde et le cerveau de départ sont recalculés.</dd>
+<dt>Stade, critère</dt><dd>une « année d'école » et son examen.</dd>
+<dt>Réglages</dt><dd>les poids et biais d'un réseau, ce qui change quand il apprend.</dd>
+<dt>Génération</dt><dd>un tour d'apprentissage par évolution : essayer des variantes, avancer vers les meilleures.</dd>
+<dt>Trace</dt><dd>la boîte noire d'un sol, source de tout ce qui est dessiné.</dd>
+<dt>Empreinte</dt><dd>un résumé court d'un calcul, qui change au moindre bit.</dd>
+<dt>Consolidation</dt><dd>après le dernier stade : entretenir ce qu'il sait.</dd>
+</dl>
+</section>
+</div></div>
+<div class="l-en" lang="en"><div class="x" lang="en" data-explain="en">
+
+<h2 id="en-top">How Sol-0 works</h2>
+
+<p class="x-lead">Sol-0 is a small robot that exists only inside a program. It lives on an invented, rust-coloured planet and learns on its own to get by, with a brain made of six small modules. Nobody drives it. It was born on <strong>13 November 2026 at 12:11:21 UTC</strong> and has lived live ever since, on a server that runs day and night. Everything the console shows is the real computation, as it happens.</p>
+
+<nav class="x-toc" aria-label="Contents">
+<ol>
+<li><a href="#en/about/intro">Sol-0 at a glance</a></li>
+<li><a href="#en/about/planet">The planet and the sol</a></li>
+<li><a href="#en/about/body">The body</a></li>
+<li><a href="#en/about/brain">The brain: six modules</a></li>
+<li><a href="#en/about/learn">How it learns</a></li>
+<li><a href="#en/about/camera">CAM-1: what the brain sees</a></li>
+<li><a href="#en/about/stages">The stages and their exams</a></li>
+<li><a href="#en/about/console">The console, panel by panel</a></li>
+<li><a href="#en/about/live">What "live" means</a></li>
+<li><a href="#en/about/real">Everything is real</a></li>
+<li><a href="#en/about/journal">The journal and the profile images</a></li>
+<li><a href="#en/about/faq">Questions</a></li>
+<li><a href="#en/about/glossary">Short glossary</a></li>
+</ol>
+</nav>
+
+<section data-sec="intro" aria-labelledby="en-intro">
+
+<h3 id="en-intro" tabindex="-1">Sol-0 at a glance</h3>
+<ul>
+<li>A <strong>simulated rover</strong>: a two-wheeled body, a camera, a battery and a solar panel, on a planet computed by the program.</li>
+<li>A <strong>brain of six modules</strong>, M0 to M5: very small neural networks (the largest has 434 settings) and a sorter. No language model, no artificial intelligence library: networks written by hand.</li>
+<li>A <strong>sol</strong>, one day of the planet, every 15 minutes: 96 a day.</li>
+<li><strong>Stages</strong>, like school years: each has a measured exam and a minimum duration.</li>
+<li><strong>Everything is real</strong>: the camera image is exactly what the brain reads, and every glowing dot of the brain is a value actually computed.</li>
+<li><strong>Nothing was played in advance</strong>: its life began at its birth and nobody knows what it will live through.</li>
+</ul>
+</section>
+
+<section data-sec="planet" aria-labelledby="en-planet">
+
+<h3 id="en-planet" tabindex="-1">The planet and the sol</h3>
+<p>The world is neither drawn by hand nor stored: it is recomputed from a single number, the <strong>seed</strong>. The same number always gives back the same landscape, like a Minecraft seed. The ground is cut into 5&nbsp;m cells of rock, dust, sand or ice. On ice, the wheels grip half as well as on rock.</p>
+<p><strong>A sol</strong> is one 24-hour day of the planet, cut into 1,200 <strong>steps</strong> of 72 seconds. At every step, the brain decides the speed of its two wheels.</p>
+<p><strong>Live</strong>, a sol starts every 15 minutes, at fixed times in Coordinated Universal Time (UTC): 00:00, 00:15, 00:30… that is 96 sols a day. Each slot goes like this:</p>
+<ul>
+<li>12 to 14 minutes of life: one step every 0.6 to 0.7 second depending on the stage, day then night;</li>
+<li>1 to 3 minutes of <strong>end of sol</strong>: the brain learns from what it just lived, and the console shows this learning generation after generation;</li>
+<li>then the wait for the next sol, whose time is shown.</li>
+</ul>
+<figure class="x-fig">
+<svg class="x-svg" viewBox="0 0 400 236" role="img" aria-labelledby="xe-slot-t xe-slot-d" font-family="ui-monospace,Menlo,Consolas,monospace"><title id="xe-slot-t">One 15-minute slot, stages 3 to 5</title><desc id="xe-slot-d">A 15-minute time bar. From 0 to 12 minutes: the sol, live, 1,200 steps, day then night. From 12 to 15 minutes: the end of sol, learning then waiting for the next sol. One step is 72 seconds of the rover's day and is computed every 0.6 second at stages 3 to 5; at stages 0 and 1, 0.7-second steps and a 1-minute end of sol; at stage 2, 0.65-second steps and a 2-minute end of sol. 96 slots a day, aligned on UTC.</desc><defs><marker id="xe-slot-m" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8z" fill="#ffb347"/></marker></defs><rect x=".5" y=".5" width="399" height="235" fill="#120c0a" stroke="#8a3b1e"/><text x="392" y="15" font-size="10" fill="#c9673a" text-anchor="end">DIAGRAM</text><text x="12" y="34" font-size="13" fill="#ffb347">One 15-minute slot, stages 3 to 5</text><rect x="20" y="48" width="288" height="34" fill="#c9673a" fill-opacity=".45" stroke="#d98c4a"/><rect x="308" y="48" width="72" height="34" fill="#ffb347" fill-opacity=".35" stroke="#d98c4a"/><text x="164" y="70" font-size="13" fill="#f2c38b" text-anchor="middle" font-weight="bold">THE SOL, LIVE</text><text x="344" y="70" font-size="12" fill="#f2c38b" text-anchor="middle" font-weight="bold">END</text><path d="M20 82V90" stroke="#d98c4a"/><text x="20" y="102" font-size="11" fill="#d98c4a" text-anchor="start">0</text><path d="M308 82V90" stroke="#d98c4a"/><text x="308" y="102" font-size="11" fill="#d98c4a" text-anchor="middle">12</text><path d="M380 82V90" stroke="#d98c4a"/><text x="380" y="102" font-size="11" fill="#d98c4a" text-anchor="end">15 min</text><rect x="20" y="112" width="10" height="10" fill="#c9673a" fill-opacity=".45" stroke="#d98c4a"/><text x="36" y="121" font-size="11" fill="#f2c38b">the sol: 1,200 steps, day then night</text><rect x="20" y="128" width="10" height="10" fill="#ffb347" fill-opacity=".35" stroke="#d98c4a"/><text x="36" y="137" font-size="11" fill="#f2c38b">end of sol: learning, then waiting</text><text x="20" y="160" font-size="12" fill="#ffb347">1 step = 72 s of the rover's day,</text><text x="20" y="176" font-size="12" fill="#ffb347">computed every 0.6 s (stages 3 to 5).</text><text x="20" y="192" font-size="12" fill="#f2c38b">Stages 0-1: 0.7 s steps, 1 min end of sol.</text><text x="20" y="208" font-size="12" fill="#f2c38b">Stage 2: 0.65 s steps, 2 min end of sol.</text><text x="20" y="224" font-size="12" fill="#f2c38b">96 slots a day: 00:00, 00:15… UTC.</text></svg>
+<figcaption><span class="x-tag">diagram</span>One 15-minute slot. The share of day and night within the sol changes with the seasons.</figcaption>
+</figure>
+<p><strong>Seasons go by fast.</strong> A year of the planet lasts 600 sols: 6 days and 6 hours for us. Depending on the season, the rover's daylight lasts 9.5 to 14.5 hours. A storm comes on average once every 40 sols, about 2.4 times a day: it halves the view and cuts the solar panel's output to 35&nbsp;%.</p>
+</section>
+
+<section data-sec="body" aria-labelledby="en-body">
+
+<h3 id="en-body" tabindex="-1">The body</h3>
+<ul>
+<li><strong>Two commands</strong>, left and right, between −1 and +1, like a tank: equal, it goes straight; different, it turns. Its top speed is about 1.7&nbsp;cm/s.</li>
+<li><strong>A battery</strong>, drained by the motors and the night heater, filled by the solar panel. Below 15&nbsp;%, it breaks down: forced sleep until 40&nbsp;%.</li>
+<li><strong>The ground fights back</strong>: if it spins too long in sand, it gets stuck, and backing up can free it; if it tilts too far, it tips over.</li>
+<li><strong>Its senses switch on stage by stage.</strong> A sense not yet switched on sends exactly 0 to the brain, like a blindfold.</li>
+</ul>
+</section>
+
+<section data-sec="brain" aria-labelledby="en-brain">
+
+<h3 id="en-brain" tabindex="-1">The brain: six modules</h3>
+<p>Sol-0's brain is not one big network but a small team. Each module has a single job. They pass numbers to each other, and none of them "understands" what it does.</p>
+<h4>A neuron is a weighted vote</h4>
+<p>Each input votes with its value. The <strong>weight</strong> says how much the neuron listens to it, and in which direction: a negative weight turns a "for" into an "against". The neuron adds up the votes, adds a small offset (the <strong>bias</strong>), then passes the total through a "squasher" that brings it between −1 and +1. A <strong>network</strong> is layers of neurons: the inputs, a hidden layer in the middle, the outputs. Its <strong>settings</strong> are all its weights and biases.</p>
+<figure class="x-fig">
+<svg class="x-svg" viewBox="0 0 400 236" role="img" aria-labelledby="xe-neuron-t xe-neuron-d" font-family="ui-monospace,Menlo,Consolas,monospace"><title id="xe-neuron-t">A neuron: a weighted vote</title><desc id="xe-neuron-d">Two inputs, 1 and minus 2, are multiplied by their weights, 0.5 and 0.25, then added with a bias of 0.1: the total is 0.1. A squasher brings this total between minus 1 and plus 1: the output is 0.09. Worked by hand, not a neuron of Sol-0.</desc><defs><marker id="xe-neuron-m" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8z" fill="#ffb347"/></marker></defs><rect x=".5" y=".5" width="399" height="235" fill="#120c0a" stroke="#8a3b1e"/><text x="392" y="15" font-size="10" fill="#c9673a" text-anchor="end">DIAGRAM</text><text x="12" y="30" font-size="13" fill="#ffb347">A neuron: a weighted vote</text><rect x="10" y="50" width="86" height="30" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="53.0" y="69.2" font-size="12" fill="#f2c38b" text-anchor="middle">input 1</text><rect x="10" y="116" width="86" height="30" rx="3" fill="#120c0a" stroke="#6f9fd8"/><text x="53.0" y="135.2" font-size="12" fill="#f2c38b" text-anchor="middle">input −2</text><path d="M96 65L176 92" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-neuron-m)"/><path d="M96 131L176 106" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-neuron-m)"/><text x="122" y="66" font-size="12" fill="#ffb347">× 0.5</text><text x="122" y="146" font-size="12" fill="#ffb347">× 0.25</text><circle cx="200" cy="98" r="24" fill="#ffb347" fill-opacity=".15" stroke="#ffb347"/><text x="200" y="95" font-size="10" fill="#f2c38b" text-anchor="middle">sum</text><text x="200" y="109" font-size="12" fill="#ffb347" text-anchor="middle">0.1</text><text x="200" y="60" font-size="11" fill="#d98c4a" text-anchor="middle">bias + 0.1</text><path d="M200 64V72" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-neuron-m)"/><path d="M224 98H246" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-neuron-m)"/><rect x="248" y="70" width="72" height="56" rx="3" fill="#120c0a" stroke="#d98c4a"/><path d="M252 98H316M284 74V122" stroke="#8a3b1e"/><path d="M252.0 116.9 L254.7 116.6 L257.3 116.3 L260.0 116.0 L262.7 115.6 L265.3 115.1 L268.0 114.5 L270.7 113.7 L273.3 112.7 L276.0 111.2 L278.7 109.0 L281.3 105.3 L284.0 98.0 L286.7 90.7 L289.3 87.0 L292.0 84.8 L294.7 83.3 L297.3 82.3 L300.0 81.5 L302.7 80.9 L305.3 80.4 L308.0 80.0 L310.7 79.7 L313.3 79.4 L316.0 79.1" fill="none" stroke="#ffb347" stroke-width="1.5"/><text x="284" y="140" font-size="11" fill="#d98c4a" text-anchor="middle">squash</text><path d="M320 98H336" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-neuron-m)"/><text x="366" y="95" font-size="10" fill="#f2c38b" text-anchor="middle">output</text><text x="366" y="109" font-size="12" fill="#ffb347" text-anchor="middle">0.09</text><text x="12" y="176" font-size="12" fill="#f2c38b">1 × 0.5 + (−2) × 0.25 + 0.1 = 0.1</text><text x="12" y="193" font-size="12" fill="#f2c38b">squashed between −1 and +1: 0.1 / 1.1 = 0.09</text><text x="12" y="210" font-size="12" fill="#c9673a">Worked by hand, not a neuron of Sol-0.</text></svg>
+<figcaption><span class="x-tag">diagram</span>One neuron, worked by hand with example numbers.</figcaption>
+</figure>
+<h4>Who does what</h4>
+<figure class="x-fig">
+<svg class="x-svg" viewBox="0 0 400 348" role="img" aria-labelledby="xe-team-t xe-team-d" font-family="ui-monospace,Menlo,Consolas,monospace"><title id="xe-team-t">Who feeds whom</title><desc id="xe-team-d">The CAM-1 camera feeds M2, the eye, which sums it up in 8 numbers. These numbers, with the body, the target, the sun, the battery and the time, go into M0, the pilot, which drives the two wheels. M3, the energy steward, picks the mode and sends it to M0. M1, the predictor, receives the gesture and its real effect. At stage 4, the patch of ground under the arm goes into M4, the driller, which decides whether to drill. At stage 5, the spectrum of the samples goes into M5, the sorter, which gives a family.</desc><defs><marker id="xe-team-m" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8z" fill="#ffb347"/></marker></defs><rect x=".5" y=".5" width="399" height="347" fill="#120c0a" stroke="#8a3b1e"/><text x="392" y="15" font-size="10" fill="#c9673a" text-anchor="end">DIAGRAM</text><text x="12" y="30" font-size="13" fill="#ffb347">Who feeds whom</text><rect x="10" y="44" width="80" height="30" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="50.0" y="63.2" font-size="12" fill="#f2c38b" text-anchor="middle">CAM-1</text><rect x="110" y="44" width="112" height="30" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="166.0" y="63.2" font-size="12" fill="#f2c38b" text-anchor="middle">M2 · eye</text><path d="M90 59H108" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-team-m)"/><rect x="10" y="86" width="212" height="40" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="116.0" y="102.7" font-size="12" fill="#f2c38b" text-anchor="middle">body · target · sun</text><text x="116.0" y="117.7" font-size="12" fill="#f2c38b" text-anchor="middle">battery · time</text><rect x="250" y="60" width="62" height="46" rx="3" fill="#ffb347" fill-opacity=".15" stroke="#ffb347"/><text x="281.0" y="79.4" font-size="13" fill="#f2c38b" text-anchor="middle">M0</text><text x="281.0" y="95.7" font-size="13" fill="#f2c38b" text-anchor="middle">pilot</text><rect x="330" y="60" width="62" height="46" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="361.0" y="79.7" font-size="12" fill="#f2c38b" text-anchor="middle">wheels</text><text x="361.0" y="94.7" font-size="12" fill="#f2c38b" text-anchor="middle">L · R</text><path d="M222 59L249 70" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-team-m)"/><path d="M222 106L249 96" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-team-m)"/><path d="M312 83H328" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-team-m)"/><rect x="110" y="146" width="112" height="30" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="166.0" y="165.2" font-size="12" fill="#f2c38b" text-anchor="middle">M3 · steward</text><path d="M222 161H281V108" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-team-m)"/><text x="228" y="156" font-size="11" fill="#d98c4a">mode</text><rect x="250" y="196" width="142" height="30" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="321.0" y="215.2" font-size="12" fill="#f2c38b" text-anchor="middle">M1 · predictor</text><path d="M361 106V194" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-team-m)"/><text x="356" y="190" font-size="11" fill="#d98c4a" text-anchor="end">gesture + effect</text><path d="M10 242H390" stroke="#8a3b1e" stroke-dasharray="2 4"/><rect x="10" y="254" width="130" height="28" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="75.0" y="271.9" font-size="11" fill="#f2c38b" text-anchor="middle">arm · stage 4</text><rect x="160" y="254" width="112" height="28" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="216.0" y="272.2" font-size="12" fill="#f2c38b" text-anchor="middle">M4 · driller</text><path d="M140 268H158" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-team-m)"/><path d="M272 268H290" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-team-m)"/><text x="296" y="272" font-size="12" fill="#f2c38b">drill?</text><rect x="10" y="292" width="130" height="28" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="75.0" y="309.9" font-size="11" fill="#f2c38b" text-anchor="middle">spectrum · stage 5</text><rect x="160" y="292" width="112" height="28" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="216.0" y="310.2" font-size="12" fill="#f2c38b" text-anchor="middle">M5 · sorter</text><path d="M140 306H158" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-team-m)"/><path d="M272 306H290" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-team-m)"/><text x="296" y="310" font-size="12" fill="#f2c38b">family</text><text x="390" y="340" font-size="10" fill="#d98c4a" text-anchor="end">Each module wakes up with a stage.</text></svg>
+<figcaption><span class="x-tag">diagram</span>The path of the numbers during a sol. M4 and M5 only wake up at stages 4 and 5.</figcaption>
+</figure>
+<div class="x-mods">
+<section class="x-mod" aria-label="M0, the pilot">
+<h5>M0 · the pilot</h5>
+<p>Drives: at every step, it picks the command of the two wheels. Like a driver learning in a car park, by trial and error.</p>
+<dl><dt>Gets</dt><dd>up to 24 values: speed of its wheels, slope, slip, its previous gesture, the summary of the image, the direction and distance of its target, the battery, the sun, the time (5 inputs on at stages 0 and 1, 18 at stage 2, 22 after)</dd>
+<dt>Size</dt><dd>24 → 16 → 2: 434 settings</dd>
+<dt>Learns</dt><dd>by evolution, at full speed at stage 2</dd></dl>
+</section>
+<section class="x-mod" aria-label="M1, the predictor">
+<h5>M1 · the predictor</h5>
+<p>Wonders: "if I make this gesture, what will happen?" It does not drive: it predicts, like a child finding out how a bike responds.</p>
+<dl><dt>Gets</dt><dd>the gesture (the two commands), the slope and the slip, averaged over 20 steps</dd>
+<dt>Predicts</dt><dd>how far the rover will move forward, drift and turn</dd>
+<dt>Size</dt><dd>5 → 16 → 3: 147 settings</dd>
+<dt>Learns</dt><dd>by gradient; its accuracy is the exam of stage 1</dd></dl>
+</section>
+<section class="x-mod" aria-label="M2, the eye">
+<h5>M2 · the eye</h5>
+<p>Sums up each photo in 8 numbers, the ones the pilot reads. A bit like summing up a painting in 8 words, except these numbers are not words: nobody knows what each one "means".</p>
+<dl><dt>Gets</dt><dd>40 fixed measures of the image: brightness and distance, by zone</dd>
+<dt>Size</dt><dd>40 → 8: 320 settings</dd>
+<dt>Learns</dt><dd>without a score: it keeps the 8 ways in which the images vary the most</dd></dl>
+</section>
+<section class="x-mod" aria-label="M3, the steward">
+<h5>M3 · the steward</h5>
+<p>Manages energy: every 20 steps, it chooses to drive, to stop in the sun to recharge, or to sleep. Like a hiker deciding when to rest so as not to end the day exhausted.</p>
+<dl><dt>Gets</dt><dd>the battery, the sun's height and its trend, the time, the solar input, a storm signal</dd>
+<dt>Size</dt><dd>8 → 8 → 3: 99 settings</dd>
+<dt>Learns</dt><dd>by evolution, on imagined days, at full speed at stage 3</dd></dl>
+</section>
+<section class="x-mod" aria-label="M4, the driller">
+<h5>M4 · the driller</h5>
+<p>At stage 4, the rover gets an arm that drills. M4 looks at the small patch of ground under the arm and decides: drill here, or not. Like a geologist who does not want to bring back the same pebble ten times.</p>
+<dl><dt>Gets</dt><dd>the colour and texture of the patch, its novelty, the battery, the time since the last drilling, the sun, the day's drillings</dd>
+<dt>Size</dt><dd>10 → 8 → 1: 97 settings</dd>
+<dt>Learns</dt><dd>by evolution, replaying the sol's real sites; at most 6 drillings per sol</dd></dl>
+</section>
+<section class="x-mod" aria-label="M5, the sorter">
+<h5>M5 · the sorter</h5>
+<p>At stage 5, a spectrometer measures the light sent back by each sample, in 16 bands: its <strong>spectrum</strong>. M5 sorts these spectra into families, like sorting pebbles by colour without knowing how many piles there will be.</p>
+<dl><dt>Sorts</dt><dd>up to 15 families; a family gets a name once it has 5 members</dd>
+<dt>Nature</dt><dd>not a network: a sorter that places family centres</dd>
+<dt>Learns</dt><dd>by moving each centre toward the average of its members</dd></dl>
+</section>
+</div>
+<p>All in all, its five networks have about 1,100 settings.</p>
+<p class="x-see"><a href="#en/live/brain">See it live →</a></p>
+</section>
+
+<section data-sec="learn" aria-labelledby="en-learn">
+
+<h3 id="en-learn" tabindex="-1">How it learns</h3>
+<p>During the sol, the brain is frozen: it acts without changing. It learns <strong>afterwards</strong>, during the end of sol, like an athlete watching the match again in the evening. That is what the console shows between two sols: the module that learns, the current generation (for example 7 of 12), the best score and the mean score.</p>
+<h4>By evolution (M0, M3, M4)</h4>
+<p>Between the pilot's settings and its success ("did I get there?") stands a whole simulator: terrain, slip, noisy camera. No formula says which way to turn each setting. So it tries:</p>
+<ol>
+<li>start from the current settings, the "recipe";</li>
+<li>make 48 slightly different variants, two by two, one in one direction and the other in the opposite direction;</li>
+<li>each variant does 2 test drives and gets a score: the distance gained toward the target, minus the energy spent, minus a penalty if it tips over or gets stuck, plus a bonus on arrival. All of them drive on the same terrains, like dishes tasted by the same jury;</li>
+<li>rank the variants: only the order counts, so a lucky variant cannot carry everything;</li>
+<li>move the recipe a small step toward the best-ranked ones.</li>
+</ol>
+<figure class="x-fig">
+<svg class="x-svg" viewBox="0 0 400 236" role="img" aria-labelledby="xe-evo-t xe-evo-d" font-family="ui-monospace,Menlo,Consolas,monospace"><title id="xe-evo-t">One generation of evolution</title><desc id="xe-evo-d">On the left, the network's current recipe. In the middle, 48 variants, in pairs of opposite directions; each does 2 test drives and gets a score. On the right, the ranking: only the order counts. An arrow goes back to the recipe: it moves a small step toward the best-ranked variants. The module of the current stage runs 12 generations per sol, the others 2 maintenance ones.</desc><defs><marker id="xe-evo-m" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8z" fill="#ffb347"/></marker></defs><rect x=".5" y=".5" width="399" height="235" fill="#120c0a" stroke="#8a3b1e"/><text x="392" y="15" font-size="10" fill="#c9673a" text-anchor="end">DIAGRAM</text><text x="12" y="30" font-size="13" fill="#ffb347">One generation of evolution</text><rect x="10" y="70" width="78" height="40" rx="3" fill="#ffb347" fill-opacity=".15" stroke="#ffb347"/><text x="49.0" y="86.7" font-size="12" fill="#f2c38b" text-anchor="middle">current</text><text x="49.0" y="101.7" font-size="12" fill="#f2c38b" text-anchor="middle">recipe</text><path d="M88 90H104" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-evo-m)"/><text x="152" y="52" font-size="11" fill="#f2c38b" text-anchor="middle">48 variants</text><text x="152" y="64" font-size="10" fill="#d98c4a" text-anchor="middle">(24 pairs + / −)</text><path d="M114 74h0M125 74h0M136 74h0M147 74h0M158 74h0M169 74h0M180 74h0M191 74h0M114 81h0M125 81h0M136 81h0M147 81h0M158 81h0M169 81h0M180 81h0M191 81h0M114 88h0M125 88h0M136 88h0M147 88h0M158 88h0M169 88h0M180 88h0M191 88h0" stroke="#ffb347" stroke-width="4.8" stroke-linecap="round"/><path d="M114 95h0M125 95h0M136 95h0M147 95h0M158 95h0M169 95h0M180 95h0M191 95h0M114 102h0M125 102h0M136 102h0M147 102h0M158 102h0M169 102h0M180 102h0M191 102h0M114 109h0M125 109h0M136 109h0M147 109h0M158 109h0M169 109h0M180 109h0M191 109h0" stroke="#6f9fd8" stroke-width="4.8" stroke-linecap="round"/><text x="150" y="128" font-size="10" fill="#d98c4a" text-anchor="middle">2 drives each</text><path d="M200 90H214" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-evo-m)"/><text x="260" y="52" font-size="11" fill="#f2c38b" text-anchor="middle">ranking</text><rect x="220" y="70" width="70" height="4" fill="#ffb347" fill-opacity="1.00"/><rect x="220" y="77" width="58" height="4" fill="#ffb347" fill-opacity="0.86"/><rect x="220" y="84" width="46" height="4" fill="#ffb347" fill-opacity="0.72"/><rect x="220" y="91" width="34" height="4" fill="#ffb347" fill-opacity="0.58"/><rect x="220" y="98" width="22" height="4" fill="#ffb347" fill-opacity="0.44"/><rect x="220" y="105" width="12" height="4" fill="#ffb347" fill-opacity="0.30"/><text x="268" y="128" font-size="10" fill="#d98c4a" text-anchor="middle">only the order counts</text><path d="M296 90H336V160H49V112" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-evo-m)"/><text x="192" y="154" font-size="11" fill="#ffb347" text-anchor="middle">a small step toward the best-ranked</text><text x="12" y="192" font-size="12" fill="#f2c38b">1 generation = this loop: 12 per sol for the</text><text x="12" y="209" font-size="12" fill="#f2c38b">current stage's module, 2 for the others.</text></svg>
+<figcaption><span class="x-tag">diagram</span>One generation. The module of the current stage runs 12 per sol; the others run 2 maintenance ones, so as not to forget.</figcaption>
+</figure>
+<h4>By gradient (M1)</h4>
+<p>M1's error is a simple formula: its prediction minus what really happened. So the direction in which to correct each setting can be computed directly, like a hiker in the fog who feels the slope under their feet.</p>
+<h4>Without a score (M2) and by sorting (M5)</h4>
+<p>M2 follows a fixed rule that brings out, image after image, the main trends of the images. M5 moves its family centres toward the average of their members.</p>
+<h4>The safety net</h4>
+<p>From stage 2 on, the rover takes the same exam every sol (one in four during consolidation): 20 fixed courses, passed if it reaches the target within 300 steps without tipping over or getting stuck. If its score falls twice in a row below 80&nbsp;% of the best of its last 5 measures, the pilot goes back to its best saved version.</p>
+<details>
+<summary>Going further</summary>
+<ul>
+<li>The squasher is the <em>softsign</em> function, v / (1 + |v|). It only uses an addition, a division and an absolute value: its result is bit-identical on every machine.</li>
+<li>Evolution: the "OpenAI-ES" method (Salimans et al., 2017). 24 noise directions ε, candidates θ ± 0.05·ε; scores become centred ranks between −0.5 and +0.5; the direction is the sum of (rank of the "plus" − rank of the "minus") × ε, divided by 48 × 0.05; the Adam optimiser moves by a step of 0.03.</li>
+<li>Score of one M0 drive, over 160 steps: progress − 0.002 × effort − 2 if tipped over − 1 if stuck + 5 on arrival.</li>
+<li>M1: backpropagation written by hand, Adam optimiser (step 0.01), 200 training steps per sol at stage 1, 50 after; its accuracy, R², is measured on sols set aside.</li>
+<li>M2: Sanger's rule, a principal component analysis computed image after image.</li>
+<li>M5: warm-started k-means (10 Lloyd iterations), with no random draw at all; a spectrum more than 0.25 away from every centre opens a new family; stability is measured by the adjusted Rand index (ARI), computed with integers.</li>
+<li>Randomness: a home-made integer generator (splitmix64). Same inputs, same bytes.</li>
+</ul>
+</details>
+</section>
+
+<section data-sec="camera" aria-labelledby="en-camera">
+
+<h3 id="en-camera" tabindex="-1">CAM-1: what the brain sees</h3>
+<p>The rover's camera, <strong>CAM-1</strong>, does not produce colours but <strong>numbers</strong>: each pixel is worth 0 to 23, a slot in a palette of 24 tints (grounds, sky, shadows). It is painting by numbers: the brain reads the numbers, or more exactly the brightness attached to each, and the console paints them for you.</p>
+<p><strong>The image shown is the brain's input.</strong> It is the same array of numbers, each pixel simply enlarged into a block. The scanlines darken every other line in a reversible way, and a test checks, pixel by pixel, that the published image gives back exactly the recording. Only one thing is not drawn: the distance of each pixel, which the brain also reads.</p>
+<figure class="x-fig">
+<svg class="x-svg" viewBox="0 0 400 236" role="img" aria-labelledby="xe-image-t xe-image-d" font-family="ui-monospace,Menlo,Consolas,monospace"><title id="xe-image-t">The image is the brain's input</title><desc id="xe-image-d">A small grid of numbers from 0 to 23, each painted with its palette colour. One arrow leads to the console, which paints these numbers for you; another leads to M2, which turns them into 40 measures then 8 numbers, read by M0, the pilot. One array: what you see is what the brain reads. Example numbers.</desc><defs><marker id="xe-image-m" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8z" fill="#ffb347"/></marker></defs><rect x=".5" y=".5" width="399" height="235" fill="#120c0a" stroke="#8a3b1e"/><text x="392" y="15" font-size="10" fill="#c9673a" text-anchor="end">DIAGRAM</text><text x="12" y="30" font-size="13" fill="#ffb347">The image is the brain's input</text><text x="12" y="50" font-size="11" fill="#f2c38b">CAM-1: numbers</text><text x="12" y="63" font-size="10" fill="#d98c4a">(0 to 23, example)</text><rect x="14" y="72" width="32" height="32" fill="#c9673a"/><text x="30" y="93" font-size="12" fill="#120c0a" text-anchor="middle">20</text><rect x="46" y="72" width="32" height="32" fill="#c9673a"/><text x="62" y="93" font-size="12" fill="#120c0a" text-anchor="middle">20</text><rect x="78" y="72" width="32" height="32" fill="#d8854f"/><text x="94" y="93" font-size="12" fill="#120c0a" text-anchor="middle">19</text><rect x="110" y="72" width="32" height="32" fill="#d8854f"/><text x="126" y="93" font-size="12" fill="#120c0a" text-anchor="middle">19</text><rect x="14" y="104" width="32" height="32" fill="#f2c38b"/><text x="30" y="125" font-size="12" fill="#120c0a" text-anchor="middle">15</text><rect x="46" y="104" width="32" height="32" fill="#f7d3a5"/><text x="62" y="125" font-size="12" fill="#120c0a" text-anchor="middle">16</text><rect x="78" y="104" width="32" height="32" fill="#b28c65"/><text x="94" y="125" font-size="12" fill="#120c0a" text-anchor="middle">14</text><rect x="110" y="104" width="32" height="32" fill="#f2c38b"/><text x="126" y="125" font-size="12" fill="#120c0a" text-anchor="middle">15</text><rect x="14" y="136" width="32" height="32" fill="#d98c4a"/><text x="30" y="157" font-size="12" fill="#120c0a" text-anchor="middle">9</text><rect x="46" y="136" width="32" height="32" fill="#9e6434"/><text x="62" y="157" font-size="12" fill="#f2c38b" text-anchor="middle">8</text><rect x="78" y="136" width="32" height="32" fill="#8a3b1e"/><text x="94" y="157" font-size="12" fill="#f2c38b" text-anchor="middle">3</text><rect x="110" y="136" width="32" height="32" fill="#d98c4a"/><text x="126" y="157" font-size="12" fill="#120c0a" text-anchor="middle">9</text><rect x="14" y="72" width="128" height="96" fill="none" stroke="#d98c4a"/><rect x="196" y="50" width="194" height="40" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="293.0" y="66.7" font-size="12" fill="#f2c38b" text-anchor="middle">the console</text><text x="293.0" y="81.7" font-size="12" fill="#f2c38b" text-anchor="middle">paints them for you</text><rect x="196" y="108" width="194" height="40" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="293.0" y="124.7" font-size="12" fill="#f2c38b" text-anchor="middle">M2: 40 measures</text><text x="293.0" y="139.7" font-size="12" fill="#f2c38b" text-anchor="middle">then 8 numbers</text><rect x="196" y="166" width="194" height="40" rx="3" fill="#ffb347" fill-opacity=".15" stroke="#ffb347"/><text x="293.0" y="182.7" font-size="12" fill="#f2c38b" text-anchor="middle">M0, the pilot</text><text x="293.0" y="197.7" font-size="12" fill="#f2c38b" text-anchor="middle">reads them</text><path d="M142 96L194 72" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-image-m)"/><path d="M142 120L194 126" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-image-m)"/><path d="M293 148V164" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-image-m)"/><text x="12" y="224" font-size="12" fill="#ffb347">One array: you see what it reads.</text></svg>
+<figcaption><span class="x-tag">diagram</span>The numbers in the grid are an example; their colours are those of the real palette.</figcaption>
+</figure>
+<p><strong>One photo every 8 steps</strong>, 150 per sol: live, a new image every 4.8 to 5.6 seconds. Between two photos the image stays the same, while the telemetry and the brain change at every step.</p>
+<p><strong>The view gets sharper with the stages</strong>: 8 × 6 pixels at stages 0 and 1, 32 × 20 at stage 2, 80 × 50 at stage 3, 160 × 100 at stages 4 and 5. Why so few? Learning by trial can only tune a few hundred numbers, so M2 has to sum up the image in 8. At stage 0, no module reads the camera yet, and the console says so.</p>
+<figure class="x-fig">
+<img class="x-img x-img-m" src="about/img/cam1-par-stade.png" width="676" height="488" loading="lazy" decoding="async" alt="Four CAM-1 images of a test rover: at stage 0 an 8 by 6 pixel grid marked vision offline, at stage 1 an 8 by 6 view, at stage 2 a 32 by 20 view with a crosshair, at stage 3 an 80 by 50 view with a horizon and pebbles.">
+<figcaption><span class="x-tag">test image, not Sol-0</span>Real engine output, but from a test rover: test seed 20261111, former pace of 4 sols a day (2026-11-11). CAM-1 at stages 0, 1, 2 and 3. These images do not come from Sol-0's life.</figcaption>
+</figure>
+<figure class="x-fig">
+<img class="x-img x-img-m" src="about/img/cam1-memes-endroits.png" width="1080" height="416" loading="lazy" decoding="async" alt="A sheet of 24 views: six places in columns, seen in broad daylight with the acuity of stages 0 to 3 in rows; the higher the stage, the clearer the relief and the pebbles.">
+<figcaption><span class="x-tag">test image, not Sol-0</span>The same six places of a test world (seed 20261111), seen in broad daylight with the acuity of stages 0 to 3: one column per place, one row per stage. Real camera, but not lived sols.</figcaption>
+</figure>
+<p class="x-see"><a href="#en/live/cam">See it live →</a></p>
+</section>
+
+<section data-sec="stages" aria-labelledby="en-stages">
+
+<h3 id="en-stages" tabindex="-1">The stages and their exams</h3>
+<p>The stages are school years. To move on, both are needed: passing the stage's exam (its <strong>criterion</strong>) and having spent a minimum time in it. Passing on the first day does not skip the year.</p>
+<div class="x-tw">
+<table>
+<caption class="x-sr">The six stages, their exam and their minimum duration</caption>
+<thead><tr><th scope="col">Stage</th><th scope="col">What it learns</th><th scope="col">Exam</th><th scope="col">Min. time</th></tr></thead>
+<tbody>
+<tr><td>0 · wake-up</td><td>move at random and record what its gestures do</td><td>200 "gesture → effect" pairs recorded</td><td>6 h</td></tr>
+<tr><td>1 · I can move</td><td>predict the effect of its wheels (M1); the eye (M2) wakes up</td><td>M1's accuracy: R² ≥ 0.70 three sols in a row (1 = perfect, 0 = no better than the average)</td><td>12 h</td></tr>
+<tr><td>2 · driving</td><td>reach a target using the camera (M0)</td><td>16 of the 20 exam courses passed</td><td>7 days</td></tr>
+<tr><td>3 · energy</td><td>manage the battery, day and night (M3)</td><td>20 sols in a row without a breakdown, while driving</td><td>14 days</td></tr>
+<tr><td>4 · samples</td><td>choose where to drill (M4)</td><td>over its last 150 drillings, at least 26 more new samples than a random driller along the same path</td><td>14 days</td></tr>
+<tr><td>5 · analysis</td><td>sort rocks into families (M5)</td><td>stable families (ARI ≥ 0.8) for 10 valid sols in a row</td><td>60 days</td></tr>
+</tbody>
+</table>
+</div>
+<figure class="x-fig">
+<svg class="x-svg" viewBox="0 0 400 316" role="img" aria-labelledby="xe-stages-t xe-stages-d" font-family="ui-monospace,Menlo,Consolas,monospace"><title id="xe-stages-t">The stages: minimum durations</title><desc id="xe-stages-d">A ladder of six stages. Stage 0, wake-up: at least 6 hours, from birth. Stage 1, I can move: at least 12 hours, at the earliest after 6 hours. Stage 2, driving: at least 7 days, at the earliest after 18 hours. Stage 3, energy: at least 14 days, at the earliest on day 7.75. Stage 4, samples: at least 14 days, at the earliest on day 21.75. Stage 5, analysis: at least 60 days, at the earliest on day 35.75. Consolidation at the earliest on day 95.75. These are minimums, not forecasts.</desc><defs><marker id="xe-stages-m" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8z" fill="#ffb347"/></marker></defs><rect x=".5" y=".5" width="399" height="315" fill="#120c0a" stroke="#8a3b1e"/><text x="392" y="15" font-size="10" fill="#c9673a" text-anchor="end">DIAGRAM</text><text x="12" y="30" font-size="13" fill="#ffb347">The stages: minimum durations</text><text x="12" y="54" font-size="10" fill="#d98c4a">stage</text><text x="232" y="54" font-size="10" fill="#d98c4a" text-anchor="end">min. time</text><text x="388" y="54" font-size="10" fill="#d98c4a" text-anchor="end">earliest</text><path d="M25 88v8M25 120v8M25 152v8M25 184v8M25 216v8" stroke="#d98c4a" stroke-width="2"/><rect x="12" y="64" width="26" height="24" rx="3" fill="#ffb347" fill-opacity="0.12" stroke="#ffb347"/><text x="25" y="81" font-size="13" fill="#f2c38b" text-anchor="middle" font-weight="bold">0</text><text x="48" y="81" font-size="13" fill="#f2c38b">wake-up</text><text x="232" y="81" font-size="13" fill="#ffb347" text-anchor="end">≥ 6 h</text><text x="388" y="81" font-size="12" fill="#f2c38b" text-anchor="end">birth</text><rect x="12" y="96" width="26" height="24" rx="3" fill="#ffb347" fill-opacity="0.20" stroke="#ffb347"/><text x="25" y="113" font-size="13" fill="#f2c38b" text-anchor="middle" font-weight="bold">1</text><text x="48" y="113" font-size="13" fill="#f2c38b">I can move</text><text x="232" y="113" font-size="13" fill="#ffb347" text-anchor="end">≥ 12 h</text><text x="388" y="113" font-size="12" fill="#f2c38b" text-anchor="end">6 h</text><rect x="12" y="128" width="26" height="24" rx="3" fill="#ffb347" fill-opacity="0.28" stroke="#ffb347"/><text x="25" y="145" font-size="13" fill="#f2c38b" text-anchor="middle" font-weight="bold">2</text><text x="48" y="145" font-size="13" fill="#f2c38b">driving</text><text x="232" y="145" font-size="13" fill="#ffb347" text-anchor="end">≥ 7 d</text><text x="388" y="145" font-size="12" fill="#f2c38b" text-anchor="end">18 h</text><rect x="12" y="160" width="26" height="24" rx="3" fill="#ffb347" fill-opacity="0.36" stroke="#ffb347"/><text x="25" y="177" font-size="13" fill="#f2c38b" text-anchor="middle" font-weight="bold">3</text><text x="48" y="177" font-size="13" fill="#f2c38b">energy</text><text x="232" y="177" font-size="13" fill="#ffb347" text-anchor="end">≥ 14 d</text><text x="388" y="177" font-size="12" fill="#f2c38b" text-anchor="end">day 7.75</text><rect x="12" y="192" width="26" height="24" rx="3" fill="#ffb347" fill-opacity="0.44" stroke="#ffb347"/><text x="25" y="209" font-size="13" fill="#f2c38b" text-anchor="middle" font-weight="bold">4</text><text x="48" y="209" font-size="13" fill="#f2c38b">samples</text><text x="232" y="209" font-size="13" fill="#ffb347" text-anchor="end">≥ 14 d</text><text x="388" y="209" font-size="12" fill="#f2c38b" text-anchor="end">day 21.75</text><rect x="12" y="224" width="26" height="24" rx="3" fill="#ffb347" fill-opacity="0.52" stroke="#ffb347"/><text x="25" y="241" font-size="13" fill="#f2c38b" text-anchor="middle" font-weight="bold">5</text><text x="48" y="241" font-size="13" fill="#f2c38b">analysis</text><text x="232" y="241" font-size="13" fill="#ffb347" text-anchor="end">≥ 60 d</text><text x="388" y="241" font-size="12" fill="#f2c38b" text-anchor="end">day 35.75</text><text x="12" y="276" font-size="12" fill="#d98c4a">consolidation: day 95.75 at the earliest</text><text x="12" y="302" font-size="12" fill="#c9673a">Minimums, not forecasts.</text></svg>
+<figcaption><span class="x-tag">diagram</span>Minimum durations and earliest entries, counted from birth.</figcaption>
+</figure>
+<p class="x-note"><strong>These are minimums, not planned dates.</strong> Nobody knows when Sol-0 will actually get through these steps: its life was never played in advance, and every server stop shifts everything.</p>
+<p><strong>The bar does not lie.</strong> It stays at 99&nbsp;% at most until the stage changes. When the exam is passed but the minimum time is not over, it says so and shows the time left.</p>
+<p><strong>Nobody repeats a year, nobody is pushed.</strong> If a stage lasts too long (3 times, then 5 times the target time), the exam's threshold is lowered by 10&nbsp;%. There is never a forced pass.</p>
+<p><strong>After stage 5</strong>, the current code stops: the rover enters <strong>consolidation</strong>. It keeps up what it knows while waiting for an update of its program. A sequel is designed, but not built yet.</p>
+</section>
+
+<section data-sec="console" aria-labelledby="en-console">
+
+<h3 id="en-console" tabindex="-1">The console, panel by panel</h3>
+<figure class="x-fig">
+<img class="x-img x-img-m" src="about/img/console-annotee.png" width="1280" height="720" loading="lazy" decoding="async" alt="Sol-0 console annotated with 12 numbered dots: title, CAM-1 image, overlays, M2 bars, M0 network, M1, M3, wheel commands, intent and modules, local map, telemetry, instrument.">
+<figcaption><span class="x-tag">test image, not Sol-0</span>Real engine image, from a test rover (test seed 20261111, sol 86, stage 3, former pace of 4 sols a day); only the numbered dots are added. Its date comes from this test's simulated clock. Its labels are in English, as in the images published on the profile; on this page they follow the chosen language.</figcaption>
+</figure>
+<ol>
+<li><strong>Title</strong>: sol number, stage, time of last contact.</li>
+<li><strong>CAM-1</strong>: what the rover sees, that is, what its brain reads.</li>
+<li><strong>Overlays</strong>: time of the sol, battery, sun gauge, camera resolution.</li>
+<li><strong>M2</strong>: 40 small bars, the 40 measures taken from the image.</li>
+<li><strong>M0</strong>: inputs on the left (amber: positive; blue: negative), the 16 hidden neurons in the middle, the outputs on the right. The lines are the connections that weigh the most at this instant: their brightness is |weight × input|, and a dotted line marks a negative contribution.</li>
+<li><strong>M1</strong>: what the predictor expected, against what really happened.</li>
+<li><strong>M3</strong>: its three choices, drive, sun or sleep.</li>
+<li><strong>Wheels</strong>: L and R, the command actually sent; XI, the small randomness added so that it tries new gestures.</li>
+<li><strong>Intent and modules</strong>: the current mode; the awake modules, and "???" for those not discovered yet.</li>
+<li><strong>Local map</strong>: 60 × 60 cells (300&nbsp;m across) around the rover, what it has explored and what it sees.</li>
+<li><strong>Telemetry</strong>: the body's measures, speed (cm/s), battery, tilt, slip. The battery is shown from stage 3, when the brain starts to sense it.</li>
+<li><strong>Instrument</strong>: empty until stage 3. At stage 4, the <strong>arm</strong>: the 16 × 16 pixel patch under the arm (exactly what M4 reads), the 5 measures of the drilled sample (hardness, red, green, blue, grain), its novelty gain, M4's output and the number of drillings of the sol. At stage 5, the <strong>SCAN</strong>: the spectrum in 16 bands, the cloud of analysed samples (one shape per family) and the family of the last one.</li>
+</ol>
+<figure class="x-fig">
+<img class="x-img x-img-s" src="about/img/map-sol86.png" width="640" height="400" loading="lazy" decoding="async" alt="Large map of a test rover: a long diagonal track from a start triangle to a circle, on a black background, with a 5 kilometre scale.">
+<figcaption><span class="x-tag">test image, not Sol-0</span>The large map published on the profile (map.png), from a test rover (seed 20261111, sol 86, former pace): triangle = start, circle = rover, brown = explored, orange = seen during this sol, black = unknown.</figcaption>
+</figure>
+<p>On the page, each panel opens larger with a click, a tap or the Enter key, and closes with Escape.</p>
+<p class="x-see"><a href="#en/live">See it live →</a></p>
+</section>
+
+<section data-sec="live" aria-labelledby="en-live">
+
+<h3 id="en-live" tabindex="-1">What "live" means</h3>
+<p>Sol-0 runs on a <strong>server</strong>: a rented Linux computer in Europe, running day and night. The real engine computes each step there <strong>at its due time</strong>, never ahead: a step does not exist before the moment it is due.</p>
+<p>As soon as a step is computed, the server sends it in a continuous stream, from live.sol0.fr, to every open page. Your page draws it as it is: no interpolation, no made-up animation. The console changes all at once at each step, at most twice per second.</p>
+<figure class="x-fig">
+<svg class="x-svg" viewBox="0 0 400 290" role="img" aria-labelledby="xe-live-t xe-live-d" font-family="ui-monospace,Menlo,Consolas,monospace"><title id="xe-live-t">From the server to your screen</title><desc id="xe-live-d">On the server, running day and night, the engine computes the world and the brain step by step; each step produces recorded values. They go straight into the stream to your page, which draws every step. The sol's images are drawn from the same values and published on GitHub about every 6 hours, where they replay a recent sol; the journal is written there. Drawing reads recorded values only.</desc><defs><marker id="xe-live-m" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8z" fill="#ffb347"/></marker></defs><rect x=".5" y=".5" width="399" height="289" fill="#120c0a" stroke="#8a3b1e"/><text x="392" y="15" font-size="10" fill="#c9673a" text-anchor="end">DIAGRAM</text><text x="12" y="30" font-size="13" fill="#ffb347">From the server to your screen</text><rect x="10" y="42" width="380" height="124" rx="4" fill="#8a3b1e" fill-opacity=".18" stroke="#d98c4a"/><text x="20" y="60" font-size="11" fill="#ffb347">SERVER · RUNNING 24/7</text><rect x="20" y="72" width="96" height="40" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="68.0" y="88.7" font-size="12" fill="#f2c38b" text-anchor="middle">world</text><text x="68.0" y="103.7" font-size="12" fill="#f2c38b" text-anchor="middle">+ brain</text><rect x="140" y="72" width="120" height="40" rx="3" fill="#120c0a" stroke="#ffb347"/><text x="200.0" y="88.7" font-size="12" fill="#f2c38b" text-anchor="middle">values of</text><text x="200.0" y="103.7" font-size="12" fill="#f2c38b" text-anchor="middle">every step</text><rect x="290" y="72" width="88" height="40" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="334.0" y="96.2" font-size="12" fill="#f2c38b" text-anchor="middle">stream</text><rect x="140" y="124" width="120" height="34" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="200.0" y="138.0" font-size="11" fill="#f2c38b" text-anchor="middle">the sol's</text><text x="200.0" y="151.7" font-size="11" fill="#f2c38b" text-anchor="middle">images</text><path d="M116 92H138" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-live-m)"/><path d="M260 92H288" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-live-m)"/><path d="M200 112V122" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-live-m)"/><rect x="220" y="196" width="170" height="44" rx="3" fill="#ffb347" fill-opacity=".15" stroke="#ffb347"/><text x="305.0" y="214.7" font-size="12" fill="#f2c38b" text-anchor="middle">your page</text><text x="305.0" y="229.7" font-size="12" fill="#f2c38b" text-anchor="middle">draws every step</text><rect x="10" y="196" width="190" height="44" rx="3" fill="#120c0a" stroke="#d98c4a"/><text x="105.0" y="215.0" font-size="11" fill="#f2c38b" text-anchor="middle">GitHub · every 6 h</text><text x="105.0" y="228.7" font-size="11" fill="#f2c38b" text-anchor="middle">replayed images · journal</text><path d="M334 112V194" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-live-m)"/><text x="340" y="182" font-size="11" fill="#ffb347">at once</text><path d="M180 158V194" fill="none" stroke="#ffb347" stroke-width="1.5" marker-end="url(#xe-live-m)"/><text x="174" y="182" font-size="11" fill="#d98c4a" text-anchor="end">published</text><text x="12" y="272" font-size="12" fill="#c9673a">Drawing reads recorded values only.</text></svg>
+<figcaption><span class="x-tag">diagram</span>The same computation feeds the live page, the profile images and the journal.</figcaption>
+</figure>
+<h4>The age of the data</h4>
+<p>The page shows the <strong>age of the data</strong>: for how many seconds the oldest thing on screen has existed. A CAM-1 photo only arrives every 8 steps, so it can be older than the telemetry. After a cut or a restart this age can grow: the page shows it instead of hiding it.</p>
+<h4>What the banner says</h4>
+<dl class="x-states">
+<dt><span class="x-lbl">CONNECTING</span></dt><dd>The page plugs into the stream and first gets the exact state of the current sol.</dd>
+<dt><span class="x-lbl">LIVE</span></dt><dd>Each step arrives as it is computed.</dd>
+<dt><span class="x-lbl">LEARNING</span></dt><dd>End of sol: the console shows the learning generations, then the sol's summary and the time of the next one.</dd>
+<dt><span class="x-lbl">ENGINE SILENT</span></dt><dd>No news from the engine for 2 minutes, or more than 5 seconds without a step during the sol. The page keeps the last image and shows since when. Nothing is made up to fill the gap.</dd>
+<dt><span class="x-lbl">RESUMING</span></dt><dd>The server restarted in the middle of a sol. The unfinished sol is recomputed from its inputs up to the due step; it must give back exactly the same bytes, which the engine checks with a fingerprint.</dd>
+<dt><span class="x-lbl">ENGINE ON HOLD</span></dt><dd>The engine refused to go on rather than repair in silence: for example a different fingerprint after a restart, a failed check of its memory, or a full disk. No sol is computed until a human restarts it; its memory is not touched.</dd>
+<dt><span class="x-lbl">SERVER BUSY</span></dt><dd>The server turns the connection away for a moment, for example when too many viewers arrive at once: the page retries on its own.</dd>
+<dt><span class="x-lbl">OFFLINE</span></dt><dd>The server no longer answers (3 failures in a row). The page shows the last sol published on GitHub, marked as recorded and not live, and retries every minute.</dd>
+</dl>
+<p><strong>Missed slots are never made up.</strong> If the server stops, the sols that should have happened do not exist: they are counted, and the journal says so as soon as a whole hour is missing. The sol number comes from the rover's memory, never from the clock.</p>
+</section>
+
+<section data-sec="real" aria-labelledby="en-real">
+
+<h3 id="en-real" tabindex="-1">Everything is real</h3>
+<p>That is the project's rule. During each sol, a <strong>trace</strong> records everything: every image, every neuron, every command, the position, the battery. It is a plane's black box, read after every sol and not only after an accident.</p>
+<p>The images and the console are drawn <strong>only</strong> from these recorded values; live, from the stream, which carries the same ones. The drawing code is not allowed to call the world, the physics or the brain: a test forbids it. Other tests check that changing an activation in the trace changes the drawn dot. Even flaws show: if it backs up, spins or falls asleep at the wrong time, the console shows it.</p>
+<p>On this page, two kinds of images are not Sol-0's data, and each one says so: the <strong>diagrams</strong>, drawn to explain, and the <strong>test images</strong>, real engine output but from a test rover on another seed. Sol-0's trailer is an <strong>illustration</strong>: drawn once, labelled as such, it shows nothing beyond the wake-up.</p>
+<figure class="x-fig">
+<img class="x-img x-img-s" src="about/img/bande-annonce-image180.png" width="640" height="360" loading="lazy" decoding="async" alt="Pixel-art trailer frame: a wheeled robot with a mast and a camera, in a rust desert, marked ILLUSTRATION.">
+<figcaption><span class="x-tag">illustration</span>A frame of the trailer. This robot with wheels and a mast is staged: the real images never show Sol-0 from the outside; on the map, it is a circle.</figcaption>
+</figure>
+<h4>Nobody saw its life before you</h4>
+<p>Sol-0 was born on <strong>13 November 2026 at 12:11:21 UTC</strong>, when it went online. Its world and its starting brain come from a number, its <strong>birth seed</strong>, drawn from that instant by a fixed calculation (a SHA-256 fingerprint of the time). This number did not exist before, and nobody played its life in advance: the project's tests used other seeds, never its own, only to test the machine. What Sol-0 will live through, we find out at the same time as you.</p>
+<p>Once written, this seed never changes: a server restart resumes the same life, never a new birth.</p>
+<h4>The same computation everywhere</h4>
+<p>Same inputs, same bytes: any sol can be replayed identically, on the development computer as on the server. Before the birth, 68 computation fingerprints were compared between the two machines: all identical. That is what makes it possible to resume an interrupted sol without changing anything, and to trust what is published.</p>
+</section>
+
+<section data-sec="journal" aria-labelledby="en-journal">
+
+<h3 id="en-journal" tabindex="-1">The journal and the profile images</h3>
+<p>The server <strong>publishes by itself</strong> to the GitHub profile, about every 6 hours and right after a notable sol: the three images of a recent sol (the animated console, the progress banner, the map) and the rover's memory on a separate branch, the journal on the main branch.</p>
+<p>These images therefore <strong>replay</strong> a recent sol, less than 6 hours old: a recording, not the live feed. The live feed is this page. The text drawn in those images stays in English.</p>
+<p>The <strong>journal</strong> is bilingual, sober, in the first person: it is the rover's voice. It is not written by a language model: it is made of fill-in-the-blank sentences completed with measured facts. It gets one summary per day (UTC) and an immediate entry for a first time, a change of stage or an incident.</p>
+</section>
+
+<section data-sec="faq" aria-labelledby="en-faq">
+
+<h3 id="en-faq" tabindex="-1">Questions</h3>
+<details>
+<summary>Why is everything so slow?</summary>
+<p>Because it is the rover's real pace. One step is 72 seconds of its day, and it drives at about 1.7&nbsp;cm/s at most: a careful rover on an unknown planet. Its 24-hour day is still played in 12 to 14 minutes, 100 to 120 times faster than ours; within that pace, nothing is sped up or skipped. Learning takes time too: at least a week to know how to drive, two to manage its energy.</p>
+</details>
+<details>
+<summary>Why is the image black at night?</summary>
+<p>At stages 0 to 2, the rover sleeps at night: camera off, brain at zero, and the page says when the sun rises. From stage 3 on, M3 decides: sleep, or carry on in the dark. Even awake, a night image is dark and noisy.</p>
+</details>
+<details>
+<summary>Can Sol-0 die?</summary>
+<p>No. Its battery can run down below 15&nbsp;%: it is then forced to sleep until 40&nbsp;%. It can get stuck or tip over: at the start of the next sol, a safe mode frees it, or puts it back on its wheels at the cost of 10&nbsp;% of battery; if its battery stayed empty for a whole sol, this mode brings it back to 40&nbsp;%. If the server stops, its memory, saved after every sol and published on GitHub about every 6 hours, is still there: it resumes the same life.</p>
+</details>
+<details>
+<summary>Does anyone drive it?</summary>
+<p>No, neither the project's team nor the visitors. Its targets are drawn by the program and its gestures come from its networks. The only human interventions are server upkeep and, sometimes, an update of the program between two sols, which the journal reports.</p>
+</details>
+<details>
+<summary>Is it an AI like ChatGPT?</summary>
+<p>Not on the same scale. Sol-0's five networks add up to about 1,100 settings; GPT-3, an ancestor published in 2020, had 175 billion. Sol-0 has never read a text: it learns from what it lives, mostly by trial.</p>
+</details>
+<details>
+<summary>Why are the images so pixelated?</summary>
+<p>Because that is exactly what its brain sees, and the brain has to stay small to learn by trial. Its view gets sharper with the stages, up to 160 × 100 pixels.</p>
+</details>
+<details>
+<summary>What happens at stage 5?</summary>
+<p>The rover analyses its samples and learns to sort them into families. After the stage's exam and minimum time (at least 60 days), it enters consolidation: it keeps up what it knows, waiting for an update of its program. When will it get there? Nobody knows.</p>
+</details>
+<details>
+<summary>Are the images on the GitHub profile live?</summary>
+<p>No: they replay a recent sol, less than 6 hours old. The live feed is here.</p>
+</details>
+<details>
+<summary>Why are times given in UTC?</summary>
+<p>The slots are aligned on universal time, the same for everyone. Paris, for example, is one hour ahead of UTC in winter and two in summer.</p>
+</details>
+<details>
+<summary>What is shown between two sols?</summary>
+<p>The real learning: the module that learns, each generation with its best and mean scores, the result of the exam when it takes place, then the sol's summary and the time of the next one.</p>
+</details>
+</section>
+
+<section data-sec="glossary" aria-labelledby="en-glossary">
+
+<h3 id="en-glossary" tabindex="-1">Short glossary</h3>
+<dl class="x-gloss">
+<dt>Sol</dt><dd>one 24-hour day of the planet; live, one sol every 15 minutes.</dd>
+<dt>Step</dt><dd>72 seconds of the rover's day, one decision of the wheels; 1,200 per sol.</dd>
+<dt>Slot</dt><dd>the 15 minutes, aligned on UTC, during which a sol is lived.</dd>
+<dt>Seed</dt><dd>the number from which the world and the starting brain are recomputed.</dd>
+<dt>Stage, criterion</dt><dd>a "school year" and its exam.</dd>
+<dt>Settings</dt><dd>a network's weights and biases, what changes when it learns.</dd>
+<dt>Generation</dt><dd>one round of learning by evolution: try variants, move toward the best.</dd>
+<dt>Trace</dt><dd>a sol's black box, the source of everything drawn.</dd>
+<dt>Fingerprint</dt><dd>a short summary of a computation, which changes at the slightest bit.</dd>
+<dt>Consolidation</dt><dd>after the last stage: keeping up what it knows.</dd>
+</dl>
+</section>
+</div></div>
+</section>
 </main>
+<dialog id="ov" aria-labelledby="ov-title">
+<div class="ovbar"><h2 id="ov-title"></h2><p id="ov-status"></p><span class="ovbtns"><a id="ov-help" href="#en/about">?</a><button id="ov-prev" type="button" aria-label="Previous panel">&lsaquo;</button><button id="ov-next" type="button" aria-label="Next panel">&rsaquo;</button><button id="ov-close" type="button"><span class="l-fr" lang="fr">Fermer</span><span class="l-en" lang="en">Close</span></button></span></div>
+<div id="ov-body"><canvas id="ov-c" width="322" height="202" aria-hidden="true"></canvas></div>
+<p id="ov-hint" hidden><span class="l-fr" lang="fr">Tournez l'appareil pour agrandir.</span><span class="l-en" lang="en">Rotate your device for a larger view.</span></p>
+</dialog>
 <script src="console.js"></script>
 <script src="live.js"></script>
+<script src="layout.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

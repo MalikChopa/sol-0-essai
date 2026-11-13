@@ -1,11 +1,171 @@
-:root { color-scheme: dark; --bg: #120c0a; --fg: #ffb347; --dim: #f2c38b; }
-html, body { margin: 0; background: var(--bg); color: var(--fg); font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 16px; line-height: 1.4; }
-main { max-width: 960px; margin: 0 auto; padding: 8px; }
-header { display: flex; gap: 16px; align-items: baseline; }
-h1 { font-size: 20px; margin: 4px 0; letter-spacing: 2px; }
-#state { border: 1px solid var(--fg); padding: 0 8px; }
-#state[data-state="OFFLINE"], #state[data-state="SERVER BUSY"], #state[data-state="ENGINE SILENT"], #state[data-state="ENGINE HOLD"] { background: var(--fg); color: var(--bg); }
+/* Sol-0 live page v2 (DESIGN.md §3-§6, §9). No transition, no animation, no smooth scrolling anywhere (EF-87). No style attribute
+   anywhere (CSP style-src 'self'): sizes are set by app.js through the CSSOM. Palette: the project's (CLAUDE.md). */
+:root { color-scheme: dark; --bg: #120c0a; --fg: #ffb347; --dim: #f2c38b; --rust: #8a3b1e; --sky: #c9673a; --sand: #d98c4a; }
+html { scrollbar-gutter: stable; background: var(--bg); }
+html, body { margin: 0; color: var(--fg); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 16px; line-height: 1.4; }
+body { background: var(--bg); min-height: 100vh; min-height: 100dvh; }
+/* language and tab are set on <html> by route.js before the first paint */
+html[lang="fr"] .l-en, html[lang="en"] .l-fr { display: none; }
+html[data-tab="about"] #view-live, html[data-tab="live"] #view-about { display: none; }
+html[data-mode="console"] #panels, html[data-mode="panels"] #console { display: none; }
+html.offline #console, html.offline #panels { display: none; }
+.sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+.skip { position: absolute; left: 8px; top: -100px; z-index: 10; background: var(--bg); color: var(--fg); padding: 8px; border: 2px solid var(--fg); }
+.skip:focus { top: 8px; }
 a { color: var(--dim); }
-canvas, #offimg { display: block; width: 100%; height: auto; image-rendering: pixelated; background: var(--bg); }
-p { margin: 4px 0; color: var(--dim); }
-.sr { position: absolute; left: -9999px; }
+a:focus-visible, button:focus-visible, summary:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+button { font: inherit; color: var(--fg); }
+/* header: title, tabs, language, full screen */
+#top { display: flex; flex-wrap: wrap; align-items: center; gap: 0 16px; min-height: 44px; padding: 0 max(8px, env(safe-area-inset-right)) 0 max(8px, env(safe-area-inset-left)); }
+h1 { font-size: 20px; margin: 0; letter-spacing: 2px; }
+#tabs { display: flex; gap: 2px; }
+#tabs a { display: inline-block; padding: 9px 10px 7px; color: var(--dim); text-decoration: none; border-bottom: 2px solid transparent; }
+#tabs a[aria-current="page"] { color: var(--fg); border-bottom-color: var(--fg); }
+#tabs a:hover { color: var(--fg); }
+.tools { margin-left: auto; display: flex; gap: 12px; align-items: center; }
+#fs { background: none; border: 1px solid var(--rust); padding: 2px 8px; cursor: pointer; }
+/* status bar (DESIGN.md §5): the badge, the sol and what it does, the age of the data; stays visible while scrolling */
+#bar, #bar2 { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 14px; font-size: 14px; color: var(--dim); overflow-wrap: anywhere;
+  padding: 0 max(8px, env(safe-area-inset-right)) 0 max(8px, env(safe-area-inset-left)); }
+#bar { position: sticky; top: 0; z-index: 3; min-height: 32px; background: var(--bg); }
+#bar2:empty, #bar2 span:empty, #bar > span:empty { display: none; }
+/* console mode: ONE status row (VERIF-rc14 I2): app.js moves #stagebar and #next into #bar, #bar2 is never shown, so the console keeps
+   its size when the end-of-sol countdown appears; one line, the console's size never follows the length of a text that changes */
+html[data-mode="console"] #bar { flex-wrap: nowrap; overflow: hidden; }
+html[data-mode="console"] #bar2 { display: none; }
+html[data-mode="console"] #bar > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 100 auto; }
+/* VERIF-rc14 I1: the badge and the data age never shrink (the age always keeps its number); the stage and « no image yet » give way
+   first (the canvas shows both), then the sol line, the next sol last */
+html[data-mode="console"] #bar > #state, html[data-mode="console"] #bar > #age { flex: none; }
+html[data-mode="console"] #bar > #noimg, html[data-mode="console"] #bar > #stagebar { flex-shrink: 1000; }
+html[data-mode="console"] #bar > #next { flex-shrink: 1; }
+#state { border: 1px solid var(--fg); padding: 0 8px; color: var(--fg); white-space: nowrap; }
+#state[data-state="OFFLINE"], #state[data-state="SERVER BUSY"], #state[data-state="ENGINE SILENT"], #state[data-state="ENGINE HOLD"], #state[data-state="RESUMING"] { background: var(--fg); color: var(--bg); }
+#line { color: var(--fg); }
+#silentmsg { margin: 4px 0; padding: 0 max(8px, env(safe-area-inset-right)) 0 max(8px, env(safe-area-inset-left)); color: var(--dim); }
+/* the live view */
+#view-live { padding: 4px max(8px, env(safe-area-inset-right)) 8px max(8px, env(safe-area-inset-left)); }
+html[data-mode="console"] #view-live { padding-top: 0; }
+#stage { position: relative; }
+#stage.wide { overflow-x: auto; }
+#console { position: absolute; left: 0; top: 0; width: 640px; height: 360px; }
+canvas, #offimg { display: block; background: var(--bg); image-rendering: crisp-edges; image-rendering: pixelated; }
+#c { width: 100%; height: 100%; }
+#off img { width: 100%; height: auto; max-height: 100%; object-fit: contain; }
+#offnote { color: var(--dim); }
+/* clickable zones over the whole console: the panel rectangles in % of 640x360 (= layout.js PANELS, tests/page/layout.test.js) */
+.hit { position: absolute; display: block; margin: 0; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
+.hit:hover, .hit:focus-visible { outline: 2px solid var(--fg); outline-offset: -2px; }
+.hit .tip { display: none; position: absolute; right: 3px; top: 3px; padding: 0 5px; font-size: 14px; line-height: 18px; background: var(--bg); color: var(--fg); border: 1px solid var(--fg); }
+.hit:hover .tip, .hit:focus-visible .tip { display: block; }
+.hit[aria-disabled="true"], .panel[aria-disabled="true"] { cursor: default; }
+.hit[aria-disabled="true"]:hover { outline: none; }
+.hit[aria-disabled="true"] .tip { display: none; }
+.nodialog .hit { display: none; }
+.nodialog .panel { cursor: default; }
+.hit-cam { left: 1.09375%; top: 6.38889%; width: 50.3125%; height: 56.11111%; }
+.hit-brain { left: 52.5%; top: 6.66667%; width: 46.25%; height: 55.55556%; }
+.hit-map { left: 1.09375%; top: 64.16667%; width: 19.0625%; height: 33.88889%; }
+.hit-tel { left: 21.25%; top: 64.44444%; width: 38.75%; height: 33.33333%; }
+.hit-inst { left: 61.25%; top: 64.44444%; width: 37.5%; height: 33.33333%; }
+/* panels (portrait): stacked, each as wide as the screen */
+/* VERIF-rc14 M5: `safe center`: a panel wider than a narrow screen starts at the left edge (scrollable), never cut on the left */
+#panels { display: flex; flex-direction: column; align-items: center; align-items: safe center; gap: 8px; max-width: 100%; overflow-x: auto; }
+.group { display: flex; align-items: flex-start; }
+.group.split { flex-direction: column; align-items: center; align-items: safe center; gap: 8px; }
+.panel { display: block; margin: 0; padding: 0; border: 0; background: none; line-height: 0; cursor: zoom-in; }
+.panel:hover canvas, .panel:focus-visible canvas { outline: 2px solid var(--fg); outline-offset: -2px; }
+/* « Details »: what the bar does not say (season, legend, what the data age means) */
+#details { margin: 6px 0 0; color: var(--dim); font-size: 14px; }
+#details summary { cursor: pointer; color: var(--fg); min-height: 24px; }
+#details p { margin: 4px 0; max-width: 90ch; }
+.noscript { padding: 16px 0; color: var(--dim); }
+/* compact (phone in landscape): a short header row and a short status row (VERIF-rc14 I2: 32 + 26 px, layout.js CHROME), « Details »
+   under the fold; the stage is in the canvas header; during the end-of-sol wait the next sol takes the sol line's room */
+html.compact #top { min-height: 32px; }
+html.compact h1 { font-size: 16px; }
+html.compact #tabs a { padding: 4px 8px 3px; font-size: 14px; }
+html.compact .tools { font-size: 14px; }
+html.compact #bar { min-height: 26px; font-size: 13px; gap: 2px 10px; }
+html.compact #stagebar { display: none; }
+html.compact #bar.waitnext > #line, html.compact #bar.waitnext > #noimg { display: none; }
+html.compact #view-live { padding-bottom: 4px; }
+/* the enlarged panel (DESIGN.md §4): same pixels, larger; the page darkens in one step, no transition */
+#ov { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: transparent; color: var(--fg); }
+#ov::backdrop { background: rgba(18, 12, 10, 0.92); }
+.ovbar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; min-height: 44px; padding: 0 max(8px, env(safe-area-inset-right)) 0 max(8px, env(safe-area-inset-left)); background: var(--bg); }
+.ovbar h2 { font-size: 16px; margin: 0; color: var(--fg); }
+#ov-status { margin: 0; font-size: 14px; color: var(--dim); overflow-wrap: anywhere; }
+.ovbtns { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.ovbtns a, .ovbtns button { display: inline-block; min-width: 36px; min-height: 36px; line-height: 34px; padding: 0 8px; text-align: center; border: 1px solid var(--rust); background: var(--bg); color: var(--fg); text-decoration: none; cursor: pointer; box-sizing: border-box; }
+#ov-body { display: flex; align-items: center; justify-content: center; height: calc(100% - 44px); }
+#ov-hint { position: absolute; left: 0; right: 0; bottom: 8px; margin: 0; text-align: center; color: var(--dim); font-size: 14px; }
+/* « How it works » tab: the explainer's own rules (out/page-v2/explain/explain.css, merged) */
+#view-about { padding: 0 max(8px, env(safe-area-inset-right)) 0 max(8px, env(safe-area-inset-left)); }
+.x{box-sizing:border-box;max-width:76ch;margin:0 auto;padding:8px 16px 56px;color:#f2c38b;background:#120c0a;
+   font:16px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;overflow-wrap:break-word}
+.x *,.x *::before,.x *::after{box-sizing:inherit;animation:none;transition:none}
+.x h2{color:#ffb347;font-size:1.4rem;line-height:1.3;margin:.6em 0 .5em;letter-spacing:.04em}
+.x h3{color:#ffb347;font-size:1.15rem;line-height:1.35;margin:2.4em 0 .6em;padding-bottom:.3em;border-bottom:1px solid #8a3b1e;
+   letter-spacing:.03em;scroll-margin-top:72px}
+.x h4{color:#ffb347;font-size:1rem;margin:1.8em 0 .4em}
+.x h5{color:#ffb347;font-size:1rem;margin:0 0 .3em}
+.x p,.x li,.x dd{margin:.5em 0}
+.x ul,.x ol{padding-left:1.4em}
+.x strong{color:#ffb347;font-weight:700}
+.x em{font-style:normal;color:#ffb347}
+.x a{color:#ffb347;text-decoration:underline;text-underline-offset:2px}
+.x a:hover{color:#f2c38b}
+.x a:focus-visible,.x summary:focus-visible{outline:2px solid #ffb347;outline-offset:2px}
+.x code{font:inherit;color:#ffb347}
+.x-lead{font-size:1.06rem}
+.x-note{border-left:3px solid #c9673a;padding:.1em 0 .1em .9em;margin:1em 0}
+/* Sommaire */
+.x-toc{border:1px solid #8a3b1e;padding:.6em 1em;margin:1.2em 0}
+.x-toc ol{margin:.3em 0;padding-left:1.6em;columns:2 16ch;column-gap:2em}
+.x-toc li{margin:.15em 0;break-inside:avoid}
+/* Figures : schémas (SVG en ligne) et images (chargées à la demande) */
+.x-fig{margin:1.6em 0}
+.x-svg{display:block;width:100%;max-width:600px;height:auto;margin:0 auto}
+.x-img{display:block;width:100%;height:auto;margin:0 auto;background:#120c0a;border:1px solid #8a3b1e}
+.x-img-m{max-width:640px}
+.x-img-s{max-width:520px}
+.x-fig figcaption{max-width:600px;margin:.6em auto 0;font-size:.9rem;line-height:1.55;color:#d98c4a}
+/* Étiquette obligatoire : « schéma » / « diagram », « image d'essai, pas Sol-0 » / « test image, not Sol-0 », « illustration » */
+.x-tag{display:inline-block;margin:0 .5em .2em 0;padding:0 .45em;border:1px solid #c9673a;color:#c9673a;font-size:.78rem;
+   line-height:1.5;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+/* Libellés de la console cités dans le texte (bandeau d'état, modes) */
+.x-lbl{display:inline-block;padding:0 .35em;border:1px solid #8a3b1e;color:#ffb347;font-size:.85rem;letter-spacing:.04em;white-space:nowrap}
+/* Tableaux : défilement horizontal propre sur téléphone, jamais toute la page */
+.x-tw{overflow-x:auto;margin:1em 0;border:1px solid #8a3b1e}
+.x table{border-collapse:collapse;width:100%;min-width:34em;font-size:.92rem;line-height:1.5}
+.x th,.x td{padding:.45em .6em;border-bottom:1px solid #8a3b1e;text-align:left;vertical-align:top}
+.x th{color:#ffb347;font-weight:700}
+.x tr:last-child td{border-bottom:0}
+.x td:first-child{white-space:nowrap;color:#ffb347}
+/* Fiches des modules M0-M5 */
+.x-mods{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,30ch),1fr));gap:12px;margin:1em 0}
+.x-mod{border:1px solid #8a3b1e;padding:.7em .9em}
+.x-mod p{margin:.35em 0}
+.x-mod dl{margin:.4em 0 0;font-size:.92rem}
+.x-mod dt{color:#d98c4a;float:left;clear:left;margin-right:.5em}
+.x-mod dd{margin:0 0 .25em}
+.x-mod dd::after{content:"";display:block;clear:both}
+/* Dépliants : « pour aller plus loin », FAQ */
+.x details{border:1px solid #8a3b1e;margin:.6em 0;padding:0 .9em}
+.x summary{cursor:pointer;color:#ffb347;padding:.55em 0}
+.x details[open] summary{border-bottom:1px solid #8a3b1e;margin-bottom:.4em}
+.x details>:last-child{margin-bottom:.8em}
+/* États de la page (liste de définitions) et glossaire */
+.x-states dt,.x-gloss dt{margin-top:.8em;color:#ffb347}
+.x-states dd,.x-gloss dd{margin:.2em 0 0 1.2em}
+@media (max-width:480px){
+  .x{padding:4px 12px 48px}
+  .x h3{margin-top:2em}
+  .x-toc ol{columns:1}
+  .x-states dd,.x-gloss dd{margin-left:.6em}
+}
+@media (prefers-reduced-motion:reduce){.x{scroll-behavior:auto}}
+@media print{.x{color:#000;background:#fff}.x h2,.x h3,.x h4,.x h5,.x strong,.x a{color:#000}}
+/* Texte réservé aux lecteurs d'écran (légende du tableau des stades) */
+.x-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}

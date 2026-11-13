@@ -16,7 +16,7 @@
 
   // ---- stream v2 reducer ----
   function newView() {
-    return {sol: null, stage: 0, stageName: '', now: null, tickMs: 600, cam: null, camT: null, camMs: null, camDims: null, hour: 0, mode: 'BABBLE',
+    return {sol: null, stage: 0, stageName: '', now: null, slot0: null, tickMs: 600, cam: null, camT: null, camMs: null, camDims: null, hour: 0, mode: 'BABBLE',
             pose: [0, 0, 1, 0], target: null, battery: 0, speed: 0, pitch: 0, roll: 0, slip: 0, sun: [0, 0, 0], stuck: false,
             tipped: false, asleep: false, locked: false, drill: 0, nd: 0, u: [0, 0], xi: [0, 0], x: new Array(24).fill(0),
             hd: new Array(16).fill(0), y: [0, 0], z: null, m1: null, m1max: 1e-12, m3: null, m4: null, armPatch: null, sample: null,
@@ -96,6 +96,7 @@
         for (var kk in keep) S[kk] = keep[kk];
         S.lastEventMs = nowMs || 0;
         S.sol = (typeof ev.s === 'number') ? ev.s : null; S.stage = ev.stage; S.stageName = ev.stage_name || ''; S.now = ev.now; S.tickMs = ev.tick_ms || 600;
+        S.slot0 = (typeof ev.slot0 === 'number' && isFinite(ev.slot0)) ? ev.slot0 : null;     // start of the sol's 15-min slot (ms, UTC)
         S.replay = ev.replay === true; S.seasonSols = ev.season_sols || 0; S.camDims = ev.cam; S.w = (ev.w && typeof ev.w === 'object') ? f32(ev.w.m0) : null; S.sunTimes = ev.sun || null; if (ev.ticks) S.ticksPerSol = ev.ticks;
         if (ev.scan0) {   // producer format: {n, explained, xy, labels, ids?, k?, names?}; k and names only when the engine provides them
           var sc0 = ev.scan0, ids = sc0.ids || null;
@@ -152,7 +153,7 @@
   // times, trail, learning and end-of-sol values). The stage and the CAM-1 size stay the last known ones (they only change with the
   // stage); an image of another size is refused in applyTick.
   function solChanged(S, s) {
-    S.sol = s; S.cam = null; S.camT = null; S.camMs = null; S.now = null; S.w = null; S.sunTimes = null; S.scan = null; S.trail = [];
+    S.sol = s; S.cam = null; S.camT = null; S.camMs = null; S.now = null; S.slot0 = null; S.w = null; S.sunTimes = null; S.scan = null; S.trail = [];
     S.z = null; S.m1max = 1e-12; S.armPatch = null; S.sample = null; S.spectrum = null; S.cat = -1; S.conf = 0;
     S.learn = null; S.learnVals = {}; S.phases = []; S.solEnd = null; S.attempt = null; S.ff = null;
   }
@@ -296,33 +297,45 @@
     if (m > 0) return m + ' min ' + r + ' s';
     return r + ' s';
   }
+  // ---- texts (page v2): T(o, id, english, vars) with o.t = table of the page language (pages/live/i18n.json); without a table the
+  // English literal, or for the DOM texts below the rc13 French when lang === 'fr' (DOM_FR = i18n.json fr, tests/page/i18n.test.js)
+  function tr(o, id, en, v) {
+    var s = (o && o.t && typeof o.t[id] === 'string') ? o.t[id] : en;
+    if (v) s = s.replace(/\{([a-z0-9_]+)\}/g, function (m, k) { return v[k] === undefined ? m : String(v[k]); });
+    return s;
+  }
+  var DOM_FR = {'d.silent.never': 'Le moteur ne tourne pas en ce moment : aucune donnée depuis le démarrage du serveur.',
+                'd.silent.for': 'Le moteur est silencieux depuis {d}.',
+                'd.hold.known': 'Le moteur est en pause depuis {d} : aucun nouveau sol avant un redémarrage du moteur.',
+                'd.hold.unknown': 'Le moteur est en pause : aucun nouveau sol avant un redémarrage du moteur.',
+                'd.resume': 'Le moteur a redémarré : il recalcule le sol en cours avant de reprendre la diffusion.',
+                'd.noimage': "pas encore d'image"};
+  function domO(lang, o) { return (o && o.t) ? o : (lang === 'fr' ? {t: DOM_FR} : null); }
   // Text shown instead of a black canvas when the engine is silent and no tick was ever received in this visit; data only.
-  function silentText(S, nowMs, lang) {
+  function silentText(S, nowMs, lang, o) {
     if (S.hasTick) return null;
-    var s = (nowMs - S.engineLastMs) / 1000;
-    if (S.neverSeen) return lang === 'fr' ? 'Le moteur ne tourne pas en ce moment : aucune donnée depuis le démarrage du serveur.'
-                                          : 'The engine is not running right now: no data since the server started.';
-    var d = fmtDuration(s);
-    return lang === 'fr' ? 'Le moteur est silencieux depuis ' + d + '.' : 'The engine has been silent for ' + d + '.';
+    var s = (nowMs - S.engineLastMs) / 1000, q = domO(lang, o);
+    if (S.neverSeen) return tr(q, 'd.silent.never', 'The engine is not running right now: no data since the server started.');
+    return tr(q, 'd.silent.for', 'The engine has been silent for {d}.', {d: fmtDuration(s)});
   }
   // Text under the canvas while the engine is on hold (engine.py `_hold`: it refused to go on, writes a `status` every minute and
   // computes no sol until it is restarted). The duration comes from the `phase hold` line (its age), shown only when known.
-  function holdText(S, nowMs, lang) {
+  function holdText(S, nowMs, lang, o) {
     if (S.phase !== 'hold') return null;
-    var known = S.phaseSinceMs !== null && S.phaseSinceMs !== undefined, d = known ? fmtDuration(Math.ceil((nowMs - S.phaseSinceMs) / 1000)) : null;
-    if (lang === 'fr') return (known ? 'Le moteur est en pause depuis ' + d : 'Le moteur est en pause') + ' : aucun nouveau sol avant un redémarrage du moteur.';
-    return (known ? 'The engine has been on hold for ' + d : 'The engine is on hold') + ': no new sol until the engine is restarted.';
+    var known = S.phaseSinceMs !== null && S.phaseSinceMs !== undefined, q = domO(lang, o);
+    if (!known) return tr(q, 'd.hold.unknown', 'The engine is on hold: no new sol until the engine is restarted.');
+    return tr(q, 'd.hold.known', 'The engine has been on hold for {d}: no new sol until the engine is restarted.',
+              {d: fmtDuration(Math.ceil((nowMs - S.phaseSinceMs) / 1000))});
   }
   // M5: text under the canvas while the engine resumes (fresh restart, then a fresh status `episode`, no tick broadcast yet).
-  function resumeText(S, lang) {
+  function resumeText(S, lang, o) {
     if (!S.resuming) return null;
-    return lang === 'fr' ? 'Le moteur a redémarré : il recalcule le sol en cours avant de reprendre la diffusion.'
-                         : 'The engine restarted: it is recomputing the current sol before broadcasting again.';
+    return tr(domO(lang, o), 'd.resume', 'The engine restarted: it is recomputing the current sol before broadcasting again.');
   }
-  // M4: said in the DOM (FR + EN) when the canvas has no CAM-1 image to show (the canvas itself says NO IMAGE YET, in English).
-  function noImageText(S, lang) {
+  // M4: said in the DOM when the canvas has no CAM-1 image to show.
+  function noImageText(S, lang, o) {
     if (S.cam || !canDraw(S)) return null;
-    return lang === 'fr' ? "pas encore d'image" : 'no image yet';
+    return tr(domO(lang, o), 'd.noimage', 'no image yet');
   }
   // The text line under the canvas (template `line` of assets.json, FR or EN). Tick values only once a tick of this sol was received;
   // before it (a `sol` line, no tick yet) `--` for each of them, never a default of newView. With a tick: the rc12 text, unchanged.
@@ -336,26 +349,30 @@
   }
   // ---- pause views (design 9.3) ----
   var MOD_NAMES = {m0: 'M0 DRIVE', m1: 'M1 PREDICT', m2: 'M2 VISION', m3: 'M3 ENERGY', m4: 'M4 SAMPLE', m5: 'M5 CATEGORIES', battery: 'TEST COURSES'};
-  function valText(mod, v) {
+  function valText(mod, v, o) {
     var x = v.val || {};
     var n = function (q) { return (typeof q === 'number' && isFinite(q)) ? String(q) : '--'; };
+    var f2 = function (q) { return (o && o.dec === ',') ? C.fix(q, 2).replace('.', ',') : C.fix(q, 2); };
     // v.of = number of learning generations, NOT the number of courses: never paired with the count of successes
-    if (mod === 'battery') return 'TEST COURSES ' + n(x.successes) + ' PASSED';
-    if (mod === 'm1') return 'R2 ' + C.fix(x.r2, 2);
-    if (mod === 'm2') return 'EXPLAINED ' + C.fix(x.explained, 2);
-    if (mod === 'm5') return 'K ' + (typeof x.k === 'number' ? x.k : '--') + ' | ARI ' + C.fix(x.ari, 2);
+    if (mod === 'battery') return tr(o, 'c.pause.battery', 'TEST COURSES {n} PASSED', {n: n(x.successes)});
+    if (mod === 'm1') return tr(o, 'c.pause.r2', 'R2 {v}', {v: f2(x.r2)});
+    if (mod === 'm2') return tr(o, 'c.pause.explained', 'EXPLAINED {v}', {v: f2(x.explained)});
+    if (mod === 'm5') return tr(o, 'c.pause.ari', 'K {k} | ARI {a}', {k: (typeof x.k === 'number' ? x.k : '--'), a: f2(x.ari)});
     return null;
   }
   var C = null;
-  // producer: sol_end.progress = {fraction, text, blocking} (status.json); anything else is not displayed
-  function progressText(p) {
+  // producer: sol_end.progress = {fraction, label, value, blocking} (views.py progress_dict); `text` / `value` are the engine's English
+  // words. Page v2 in French: the percentage of `fraction` when there is one (à re-valider), else the engine's text as it is (data).
+  function progressText(p, o) {
     if (!p || typeof p !== 'object') return null;
+    var pc = (typeof p.fraction === 'number' && isFinite(p.fraction)) ? Math.floor(p.fraction * 100 + 0.5) + '%' : null;
+    if (o && o.lang === 'fr' && pc !== null) return pc;
     var t = (typeof p.text === 'string' && p.text) ? p.text : (typeof p.value === 'string' ? p.value : null);
     if (t) return t;
-    return (typeof p.fraction === 'number' && isFinite(p.fraction)) ? Math.floor(p.fraction * 100 + 0.5) + '%' : null;
+    return pc;
   }
   // Title of the pause view, or null when the canvas shows the episode (no pause view). RESUMING is a pause view whatever the last
-  // phase line was (RC12-verif I1: after a restart the phase is unknown until a phase line comes).
+  // phase line was (RC12-verif I1: after a restart the phase is unknown until a phase line comes). English: it is also the view key.
   function pauseTitle(S) {
     var P = S.phase;
     if (P === 'hold') return 'ENGINE HOLD';
@@ -363,20 +380,37 @@
     if (!P || P === 'episode') return null;
     return 'END OF SOL | ' + (P === 'learn' ? 'LEARNING' : (P === 'idle' ? 'WAITING' : String(P).toUpperCase()));
   }
-  function drawPause(img, S) {
-    var P = S.phase, lines = [], y, k, resuming = S.resuming && P !== 'hold';
-    C.rect(img, 150, 3, 270, 12, C.BG);
-    C.text(img, 160, 6, pauseTitle(S), C.hud(10), 1);
-    if (S.cam && S.camT !== null) C.text(img, 12, 213, 'LAST FRAME T' + S.camT, C.MARK, 1);   // the tick that produced the image
+  var PH_EN = {learn: 'LEARNING', idle: 'WAITING', narrative: 'NARRATIVE', render: 'RENDER', check: 'CHECK', save: 'SAVE'};
+  function phaseText(ph, o) { return tr(o, 'c.pause.ph.' + ph, PH_EN[ph] || String(ph).toUpperCase()); }
+  // the same title in the page language
+  function pauseTitleText(S, o) {
+    var P = S.phase;
+    if (P === 'hold') return tr(o, 'c.pause.hold', 'ENGINE HOLD');
+    if (S.resuming) return tr(o, 'c.pause.resuming', 'RESUMING');
+    if (!P || P === 'episode') return null;
+    return tr(o, 'c.pause.endofsol', 'END OF SOL | {ph}', {ph: phaseText(P, o)});
+  }
+  function drawPause(img, S, o) {
+    var page = !!(o && o.page), P = S.phase, y, k, resuming = S.resuming && P !== 'hold';
+    var right = page ? (o.right || '') : '', rx = 632 - C.textWidth(right);
+    C.rect(img, 150, 3, page ? rx - 4 - 150 : 270, 12, C.BG);     // page: up to the right text (never a piece of the centred text left)
+    C.text(img, 160, 6, pauseTitleText(S, o), C.hud(10), 1);
+    if (S.cam && S.camT !== null) {         // the tick that produced the image
+      var lf = tr(o, 'c.pause.lastframe', 'LAST FRAME T{n}', {n: S.camT});
+      if (page) C.textOn(img, 8 + 320 - 4 - C.textWidth(lf), 202, lf, C.MARK, 1, o);     // D13: clear of the SUN compass
+      else C.text(img, 12, 213, lf, C.MARK, 1);
+    }
     C.rect(img, 337, 25, 294, 198, C.BG);
-    C.text(img, 340, 28, P === 'hold' ? 'BRAIN | ENGINE HOLD' : (resuming ? 'BRAIN | RESUMING' : (P === 'idle' ? 'BRAIN | END OF SOL' : 'BRAIN | LEARNING')), C.hud(10), 1);
+    C.text(img, 340, 28, P === 'hold' ? tr(o, 'c.pause.brain.hold', 'BRAIN | ENGINE HOLD') : (resuming ? tr(o, 'c.pause.brain.resuming', 'BRAIN | RESUMING')
+      : (P === 'idle' ? tr(o, 'c.pause.brain.end', 'BRAIN | END OF SOL') : tr(o, 'c.pause.brain.learn', 'BRAIN | LEARNING'))), C.hud(10), 1);
     y = 44;
+    var f2 = function (q) { return (o && o.dec === ',') ? C.fix(q, 2, true).replace('.', ',') : C.fix(q, 2, true); };
     if (S.learn && (P === 'learn' || P === 'narrative' || P === 'render' || P === 'check' || P === 'save')) {
       var L = S.learn;
-      C.text(img, 340, y, MOD_NAMES[L.mod] || String(L.mod).toUpperCase(), C.hud(10), 2); y += 20;
-      C.text(img, 340, y, 'GEN ' + L.gen + '/' + L.of, C.hud(10), 1); y += 12;
-      if (L.best !== null && L.best !== undefined) { C.text(img, 340, y, 'BEST ' + C.fix(L.best, 2, true), C.hud(10), 1); y += 10; }
-      if (L.mean !== null && L.mean !== undefined) { C.text(img, 340, y, 'MEAN ' + C.fix(L.mean, 2, true), C.hud(10), 1); y += 10; }
+      C.text(img, 340, y, tr(o, 'c.pause.mod.' + L.mod, MOD_NAMES[L.mod] || String(L.mod).toUpperCase()), C.hud(10), 2); y += 20;
+      C.text(img, 340, y, tr(o, 'c.pause.gen', 'GEN {g}/{n}', {g: L.gen, n: L.of}), C.hud(10), 1); y += 12;
+      if (L.best !== null && L.best !== undefined) { C.text(img, 340, y, tr(o, 'c.pause.best', 'BEST {v}', {v: f2(L.best)}), C.hud(10), 1); y += 10; }
+      if (L.mean !== null && L.mean !== undefined) { C.text(img, 340, y, tr(o, 'c.pause.mean', 'MEAN {v}', {v: f2(L.mean)}), C.hud(10), 1); y += 10; }
       var lo = Math.min.apply(null, L.bars.concat([0])), hi = Math.max.apply(null, L.bars.concat([0])), span = hi - lo || 1;
       for (k = 0; k < L.bars.length; k++) {
         var hh = Math.max(1, Math.floor(30 * (L.bars[k] - lo) / span));
@@ -385,35 +419,72 @@
     }
     y = 134;
     Object.keys(S.learnVals).forEach(function (m) {
-      var t = valText(m, S.learnVals[m]);
+      var t = valText(m, S.learnVals[m], o);
       if (t && y < 205) { C.text(img, 340, y, t, C.hud(10), 1); y += 10; }
     });
-    ['render', 'check', 'save'].forEach(function (ph) {
-      if (S.phases.indexOf(ph) >= 0 && y < 215) { C.text(img, 340, y, ph.toUpperCase() + (S.phase === ph ? ' ...' : ' OK'), C.hud(7), 1); y += 10; }
+    // M6 (page): the phases in the order they came (S.phases), not a fixed order
+    var order = page ? S.phases.filter(function (ph) { return ph === 'render' || ph === 'check' || ph === 'save'; }) : ['render', 'check', 'save'];
+    order.forEach(function (ph) {
+      if (S.phases.indexOf(ph) >= 0 && y < 215) {
+        C.text(img, 340, y, S.phase === ph ? tr(o, 'c.pause.running', '{ph} ...', {ph: phaseText(ph, o)}) : tr(o, 'c.pause.done', '{ph} OK', {ph: phaseText(ph, o)}), C.hud(7), 1);
+        y += 10;
+      }
     });
     if (S.solEnd && (P === 'idle' || P === 'hold')) {
-      var E = S.solEnd, rows = [['SOL', S.sol], ['STAGE', E.stage], ['PROGRESS', progressText(E.progress)], ['DISTANCE M', E.distance_m], ['TARGETS', E.targets],
-                                 ['RETRIES', E.attempts], ['COURSES PASSED', E.battery_successes]];
+      var E = S.solEnd, rows = [[tr(o, 'c.sol.sol', 'SOL'), S.sol], [tr(o, 'c.sol.stage', 'STAGE'), E.stage], [tr(o, 'c.sol.progress', 'PROGRESS'), progressText(E.progress, o)],
+                                 [page ? null : tr(o, 'c.sol.distance', 'DISTANCE M'), E.distance_m], [tr(o, 'c.sol.targets', 'TARGETS'), E.targets],
+                                 [tr(o, 'c.sol.retries', 'RETRIES'), E.attempts], [tr(o, 'c.sol.courses', 'COURSES PASSED'), E.battery_successes]];
       y = 44;
-      rows.forEach(function (r) { if (r[1] !== undefined && r[1] !== null) { C.text(img, 340, y, r[0] + ' ' + String(r[1]).toUpperCase(), C.hud(10), 1); y += 12; } });
+      rows.forEach(function (r) {
+        if (r[1] === undefined || r[1] === null) return;
+        // M5 (page): « DISTANCE 735 M », the stream's value rounded to the metre
+        var t = r[0] === null ? tr(o, 'c.sol.distm', 'DISTANCE {d} M', {d: (typeof r[1] === 'number' && isFinite(r[1])) ? Math.round(r[1]) : String(r[1]).toUpperCase()})
+          : r[0] + ' ' + String(r[1]).toUpperCase();
+        C.text(img, 340, y, t, C.hud(10), 1); y += 12;
+      });
     }
+    if (page) C.vignette(img);        // M7: the cleared rectangles get the vignette back
   }
-  function nightText(S) {
+  function nightText(S, o) {
     if (!S.hasTick || !S.camDims || S.stage > 2 || S.mode !== 'SLEEP' || !S.sunTimes) return null;     // no sol line known: stage unknown
+    if (o && o.page) {    // D7 / UI-AUDIT I12: the sunrise on the rover's clock (sol.sun.lever), never an estimate of real minutes
+      var lv = S.sunTimes.lever;
+      if (typeof lv !== 'number' || !isFinite(lv)) return null;
+      var h = Math.floor(lv), m = Math.floor((lv - h) * 60.0);
+      return tr(o, 'c.night', 'NIGHT | SLEEPING | SUNRISE {hh}:{mm}', {hh: pad2(h), mm: pad2(m)});
+    }
     var d = (S.sunTimes.lever - S.hour + 24) % 24, min = Math.ceil(d * (S.ticksPerSol / 24) * S.tickMs / 60000);
     return 'NIGHT | SLEEPING | SUNRISE IN ' + min + ' MIN';
   }
-  // season line (design 4.4): computed from the sol number and the sunrise/sunset times of the sol event; null if not provided
+  // season line (design 4.4): computed from the sol number and the sunrise/sunset times of the sol event; null if not provided.
+  // Page v2 (D6): `seasonLine` says SOL d/n (the sol's place in the planet's year) and DAYLIGHT (simulated day length), FR decimal comma.
+  // VERIF-rc14 I3: d = sol % n, counted from 0 like the sols (the engine's season phase is (sol % year) / year, world/climate.py):
+  // in year 1 « SOL d » is the sol shown by the bar and the canvas, never a second number for the same word.
   function seasonText(S, tpl) {
     if (!S.seasonSols || !S.sunTimes || typeof S.sol !== 'number') return null;
     var yl = 4 * S.seasonSols, h = S.sunTimes.coucher - S.sunTimes.lever;
     return tpl.replace('{y}', Math.floor(S.sol / yl) + 1).replace('{d}', (S.sol % yl) + 1).replace('{n}', yl).replace('{h}', (Math.round(h * 10) / 10).toFixed(1));
   }
+  function seasonLine(S, o) {
+    if (!S.seasonSols || !S.sunTimes || typeof S.sol !== 'number') return null;
+    var yl = 4 * S.seasonSols, h = (Math.round((S.sunTimes.coucher - S.sunTimes.lever) * 10) / 10).toFixed(1);
+    return tr(o, 'd.season', 'YEAR {y} · SOL {d}/{n} · DAYLIGHT {h} h', {y: Math.floor(S.sol / yl) + 1, d: S.sol % yl, n: yl,
+                                                                          h: (o && o.dec === ',') ? h.replace('.', ',') : h});
+  }
   // No sol line known (none seen in this visit, or the CAM-1 size proved the stage changed): stage, sol start, camera size and weights
   // are unknown, so the console (laid out by stage) is not drawn; only facts of the ticks: sol number, hour, NO IMAGE YET.
   // Also a sol line and no tick yet (RC12-verif I2): the sol number only (no hour, no tick value), NO IMAGE YET.
-  function drawBare(img, S) {
+  function drawBare(img, S, o) {
     img.fill(C.BG);
+    if (o && o.page) {      // M11: the same header as the console (stage when the sol line is known), the five empty frames
+      var center = S.camDims ? C.centerText(S, o) : (typeof S.sol === 'number' ? tr(o, 'c.bare.sol', 'SOL {n}', {n: S.sol > 9999 ? S.sol : ('0000' + S.sol).slice(-4)}) : '');
+      C.header(img, center, o.right || '', false, o);
+      C.emptyFrames(img);
+      if (S.hasTick && typeof S.hour === 'number' && isFinite(S.hour)) C.textOn(img, 12, 28, C.hhmm(S.hour), C.MARK, 1, o);
+      C.camCenter(img, 24 + 100 + 9, tr(o, 'c.cam.noimage', 'NO IMAGE YET'), o);
+      C.vignette(img);
+      return img;
+    }
     C.text(img, 8, 3, 'SOL-0', C.hud(10), 2);
     C.text(img, 72, 6, 'CAM-1', C.hud(10), 1);
     if (typeof S.sol === 'number') C.text(img, 160, 6, 'SOL ' + (S.sol > 9999 ? S.sol : ('0000' + S.sol).slice(-4)), C.hud(10), 1);
@@ -427,17 +498,107 @@
     C.text(img, 8 + Math.floor((320 - C.textWidth(t)) / 2), 24 + 100 + 9, t, C.MARK, 1);
     return img;
   }
-  function renderLive(img, S, link) {
-    if (!S.camDims || !S.hasTick) drawBare(img, S);
-    else C.renderConsole(img, S, {scanlines: true, contactLabel: 'SOL START'});   // S.now = start time of the sol, not a contact time
-    if (pauseTitle(S) !== null) drawPause(img, S);
-    else { var nt = nightText(S); if (nt) C.text(img, 8 + Math.floor((320 - C.textWidth(nt)) / 2), 24 + 100 + 12, nt, C.MARK, 1); }
+  // ---- page v2: state words, header right text, REC, waiting card, status bar texts ----
+  var STATE_KEY = {'CONNECTING': 'connecting', 'LIVE': 'live', 'LEARNING': 'learning', 'OFFLINE': 'offline', 'SERVER BUSY': 'busy',
+                   'REPLAY': 'replay', 'ENGINE SILENT': 'silent', 'ENGINE HOLD': 'hold', 'RESUMING': 'resuming'};
+  var WAIT_EN = {connecting: 'CONNECTING', live: 'WAITING FOR DATA', idle: 'WAITING FOR THE NEXT SOL', learning: 'LEARNING', replay: 'REPLAY',
+                 silent: 'ENGINE SILENT', hold: 'ENGINE ON HOLD', busy: 'SERVER BUSY', resuming: 'RESUMING', offline: 'OFFLINE'};
+  function stateKey(label) { return STATE_KEY[label] || 'connecting'; }
+  function waitText(key, o) { return tr(o, 'c.wait.' + key, WAIT_EN[key] || WAIT_EN.connecting); }
+  // D17: the header's right text says the state when the console is not live (same words as the badge); else D2: the real start of
+  // the sol's slot (`slot0` of the sol line, UTC), nothing when unknown (older server, sol without its line). Never S.now.
+  function headerRight(S, o, label) {
+    if (label && label !== 'LIVE' && label !== 'LEARNING' && label !== 'REPLAY') return waitText(stateKey(label), o);
+    if (typeof S.slot0 !== 'number' || !isFinite(S.slot0)) return '';
+    var d = new Date(S.slot0);
+    return tr(o, 'c.hdr.right', 'SOL START {hh}:{mm} UTC', {hh: pad2(d.getUTCHours()), mm: pad2(d.getUTCMinutes())});
+  }
+  // D14: REC is lit only while fresh ticks are drawn (state LIVE, no pause view, a tick, awake)
+  function recOn(S, label) { return label === 'LIVE' && pauseTitle(S) === null && S.hasTick && S.mode !== 'SLEEP'; }
+  // the waiting card's key: what it says (D3)
+  function waitKey(S, label) {
+    var k = stateKey(label || 'CONNECTING');
+    if (k === 'live' && S.phase === 'idle') k = 'idle';
+    else if (k === 'live' && ['learn', 'narrative', 'render', 'check', 'save'].indexOf(S.phase) >= 0) k = 'learning';
+    return k;
+  }
+  // D3: nothing to draw yet (no sol line, or the snapshot is not complete): the frames, what the page knows, and the time of the next
+  // sol when the engine announced it (fixed time, no countdown on the canvas: the countdown is in #next). No value of any sol.
+  // VERIF-rc14 M4: the time only while it is ahead (same rule as #next, `nextLeftS`; o.now = the page's clock), never a past time.
+  function renderWaiting(img, S, o) {
+    o = o || {};
+    img.fill(C.BG);
+    C.header(img, '', '', false, o);
+    C.emptyFrames(img);
+    var k = waitKey(S, o.label);
+    C.camCenter(img, 24 + 100 - 8, waitText(k, o), o);
+    if (nextLeftS(S, typeof o.now === 'number' ? o.now : Date.now()) !== null) {
+      var d = new Date(Date.parse(S.nextUtc));
+      C.camCenter(img, 24 + 100 + 6, tr(o, 'c.wait.next', 'NEXT SOL {hh}:{mm}:{ss} UTC', {hh: pad2(d.getUTCHours()), mm: pad2(d.getUTCMinutes()), ss: pad2(d.getUTCSeconds())}), o);
+    }
+    C.vignette(img);
+    return img;
+  }
+  // what the rover is doing, in the page language: the pause title, the night text, else the mode (same words as the canvas)
+  function activityText(S, o) {
+    var pt = pauseTitleText(S, o);
+    if (pt !== null) return pt;
+    if (!S.hasTick) return '--';
+    var nt = nightText(S, o);
+    if (nt) return nt.split(' | ').join(' · ');
+    return C.modeLabel(S.mode, o);
+  }
+  // status bar line (#line, starts with SOL: the bench reads the sol number there): no tick yet -> `--`, never a default of newView
+  function barLine(S, o) {
+    var s = typeof S.sol === 'number' ? S.sol : '--', hh = '--', mm = '--';
+    if (S.hasTick) { hh = Math.floor(S.hour); mm = pad2(Math.floor((S.hour - hh) * 60)); hh = pad2(hh); }
+    return tr(o, 'd.line', 'SOL {s} · {hh}:{mm} · {act}', {s: s, hh: hh, mm: mm, act: activityText(S, o)});
+  }
+  function stageBar(S, o) {
+    if (!S.stageName) return '';
+    return tr(o, 'd.stagebar', 'STAGE {s} · {name}', {s: S.stage, name: C.stageLabel(S, o)});
+  }
+  // the accessible sentence (#summary, at most once a minute)
+  function summaryText(S, o, ageTxt, params) {
+    var s = typeof S.sol === 'number' ? S.sol : '--';
+    if (!S.hasTick) return tr(o, 'd.summary.none', 'Sol {s}: no step received yet, data age {t}.', {s: s, t: ageTxt});
+    var hh = Math.floor(S.hour), mm = Math.floor((S.hour - hh) * 60), act = activityText(S, o).split(' | ').join(', ').split(' · ').join(', ').toLowerCase();
+    var bat = C.batteryUnlocked(S.stage) ? tr(o, 'd.summary.bat', 'battery {b}%', {b: Math.floor(S.battery * 100 + 1e-9)})
+      : tr(o, 'd.summary.batlocked', 'battery shown from stage {n}', {n: C.batteryUnlockStage()});
+    var v = C.F(o, S.speed * params.cell_m * 100 / params.tick_s, 2);
+    return tr(o, 'd.summary', "Sol {s}, {hh}:{mm} on the rover's clock, {act}, {bat}, speed {v} cm/s, data age {t}.",
+              {s: s, hh: pad2(hh), mm: pad2(mm), act: act, bat: bat, v: v, t: ageTxt});
+  }
+  function renderLive(img, S, link, o) {
+    if (!o || !o.page) {          // rc13 drawing (the tests of the state machine and the bench keys use it)
+      if (!S.camDims || !S.hasTick) drawBare(img, S);
+      else C.renderConsole(img, S, {scanlines: true, contactLabel: 'SOL START'});   // S.now: sol nominal time (rc13 label, D2)
+      if (pauseTitle(S) !== null) drawPause(img, S);
+      else { var nt0 = nightText(S); if (nt0) C.text(img, 8 + Math.floor((320 - C.textWidth(nt0)) / 2), 24 + 100 + 12, nt0, C.MARK, 1); }
+      return img;
+    }
+    // page v2: o = {page, t, en, dec, lang, label (Live.label at draw time), boxes?}; right text and REC follow the state
+    o.right = headerRight(S, o, o.label);
+    o.rec = recOn(S, o.label);
+    if (o.scanlines === undefined) o.scanlines = true;
+    C.setBoxes(o.boxes || null);
+    if (!S.camDims || !S.hasTick) drawBare(img, S, o);
+    else C.renderConsole(img, S, o);
+    if (pauseTitle(S) !== null) drawPause(img, S, o);
+    else {
+      var nt = nightText(S, o);
+      if (nt) C.camCenter(img, S.cam ? 24 + 100 + 12 : 148, nt, o);       // D12: under NO IMAGE YET when there is no image
+    }
+    C.setBoxes(null);
     return img;
   }
 
   var api = {b64: b64, newView: newView, applyEvent: applyEvent, makeLimiter: makeLimiter, makeLink: makeLink, label: label, silentText: silentText, dataAgeS: dataAgeS, fmtDuration: fmtDuration, engineSilent: engineSilent,
              holdText: holdText, resumeText: resumeText, noImageText: noImageText, nextLeftS: nextLeftS, canDraw: canDraw, pauseTitle: pauseTitle, lineText: lineText, extraLabel: extraLabel, countLine: function (S, nowMs) { return markEngine(S, {e: '?'}, nowMs); },
              renderLive: renderLive, nightText: nightText, seasonText: seasonText, setConsole: function (c) { C = c; }, valText: valText, progressText: progressText,
+             tr: tr, pauseTitleText: pauseTitleText, headerRight: headerRight, recOn: recOn, waitKey: waitKey, stateKey: stateKey, renderWaiting: renderWaiting,
+             activityText: activityText, barLine: barLine, stageBar: stageBar, seasonLine: seasonLine, summaryText: summaryText,
+             STATE_KEY: STATE_KEY, WAIT_EN: WAIT_EN, MOD_NAMES: MOD_NAMES, PH_EN: PH_EN, DOM_FR: DOM_FR,
              MIN_DRAW_MS: MIN_DRAW_MS, BUSY_POLL_MS: BUSY_POLL_MS, OFFLINE_RETRY_MS: OFFLINE_RETRY_MS, OPEN_TIMEOUT_MS: OPEN_TIMEOUT_MS};
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Sol0Live = api;
 })(typeof self !== 'undefined' ? self : this);
