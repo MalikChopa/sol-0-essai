@@ -10,8 +10,9 @@
   function T() { return assets.i18n[lang]; }
   function now() { return Date.now(); }
 
+  // RC12-verif I2: also a sol line without tick yet (bare view), never the previous sol's image (Live.canDraw)
   function draw() {
-    if (!S.hasTick || offlineShown) return;
+    if (offlineShown || !Live.canDraw(S)) return;
     Live.renderLive(buf, S, link);
     for (var i = 0; i < buf.length; i++) { var c = pal[buf[i]]; img.data[4 * i] = c[0]; img.data[4 * i + 1] = c[1]; img.data[4 * i + 2] = c[2]; img.data[4 * i + 3] = 255; }
     ctx.putImageData(img, 0, 0);
@@ -20,32 +21,35 @@
   function banner() {
     var st = Live.label(link, S, now()), el = $('state');
     el.textContent = ({'CONNECTING': T().connecting, 'LIVE': T().live, 'LEARNING': T().learning, 'OFFLINE': T().offline,
-                       'SERVER BUSY': T().busy, 'REPLAY': T().replay, 'ENGINE SILENT': T().silent})[st] || st;
+                       'SERVER BUSY': T().busy, 'REPLAY': T().replay, 'ENGINE SILENT': T().silent})[st] || Live.extraLabel(st, lang) || st;
     el.dataset.state = st;
-    var sm = $('silentmsg'), txt = (st === 'ENGINE SILENT') ? Live.silentText(S, now(), lang) : null;
+    var sm = $('silentmsg'), txt = (st === 'ENGINE SILENT') ? Live.silentText(S, now(), lang) : (st === 'ENGINE HOLD' ? Live.holdText(S, now(), lang)
+                                                                : (st === 'RESUMING' ? Live.resumeText(S, lang) : null));
     if (txt) { sm.textContent = txt; sm.hidden = false; } else sm.hidden = true;
   }
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function textLines() {
-    var t = now();
+    var t = now(), shown = Live.canDraw(S);   // same rule as the canvas: the text never stays frozen on the previous sol
     banner();
-    if (t - lastLine >= 1000 && S.hasTick) {
+    if (t - lastLine >= 1000 && shown) {
       lastLine = t;
-      var hh = Math.floor(S.hour), mm = Math.floor((S.hour - hh) * 60);
-      $('line').textContent = T().line.replace('{s}', S.sol).replace('{hh}', pad(hh)).replace('{mm}', pad(mm)).replace('{mode}', S.mode)
-        .replace('{b}', Math.floor(S.battery * 100 + 1e-9)).replace('{v}', Con.fix(S.speed * assets.params.cell_m * 100 / assets.params.tick_s, 2));
-      $('age').textContent = T().age + ': ' + Math.max(0, Math.round((t - S.lastEventMs) / 1000)) + ' s';
+      $('line').textContent = Live.lineText(S, T().line, assets.params);    // no tick yet: `--` for the tick values
+      var ni = Live.noImageText(S, lang);    // the canvas says NO IMAGE YET in English only
+      $('age').textContent = T().age + ': ' + Live.fmtDuration(Live.dataAgeS(S, t)) + (ni ? ' · ' + ni : '');
       var st = Live.seasonText(S, T().season); $('season').textContent = st ? st : '';
       var nt = Live.nightText(S); $('night').textContent = nt ? nt : '';
-      if (S.nextUtc && (S.phase === 'idle' || S.phase === 'hold')) {
-        var left = Math.max(0, Math.round((Date.parse(S.nextUtc) - (S.serverUtc ? Date.parse(S.serverUtc) + (t - S.lastEventMs) : t)) / 1000));
-        $('next').textContent = T().next.replace('{t}', S.nextUtc.slice(11, 19)) + ' (' + Math.floor(left / 60) + ':' + pad(left % 60) + ')';
-      } else $('next').textContent = '';
+      var left = Live.nextLeftS(S, t);       // null once `next` is past: no countdown frozen at 0:00
+      if (left !== null) $('next').textContent = T().next.replace('{t}', S.nextUtc.slice(11, 19)) + ' (' + Math.floor(left / 60) + ':' + pad(left % 60) + ')';
+      else $('next').textContent = '';
     }
-    if (t - lastAria >= 60000 && S.hasTick) { lastAria = t; $('summary').textContent = $('line').textContent; }
+    if (t - lastAria >= 60000 && shown) { lastAria = t; $('summary').textContent = $('line').textContent; }
   }
   function onEvent(ev) {
-    if (ev.e === 'hello' || ev.e === 'status') { Live.applyEvent(S, ev, now()); if (ev.e === 'hello') link.onHello(); banner(); return; }
+    if (ev.e === 'hello' || ev.e === 'status') {
+      Live.applyEvent(S, ev, now()); if (ev.e === 'hello') link.onHello(); banner();
+      if (Live.canDraw(S)) limiter.request();       // RC12-verif I1: a status starts or ends RESUMING, the canvas says it too
+      return;
+    }
     Live.applyEvent(S, ev, now()); link.onEvent(S, ev);
     if (offlineShown) hideOffline();
     limiter.request();
@@ -57,9 +61,14 @@
     openTimer = setTimeout(function () { if (link.state === 'CONNECTING') fail(); }, Live.OPEN_TIMEOUT_MS);
     es.onopen = function () { clearTimeout(openTimer); link.onOk(); };
     ['hello', 'sol', 'poses', 'tick', 'learn', 'ff', 'attempt', 'phase', 'sol_end', 'published', 'status', 'restart'].forEach(function (n) {
-      es.addEventListener(n, function (m) { try { onEvent(JSON.parse(m.data)); } catch (e) { /* ignore a malformed line */ } });
+      es.addEventListener(n, function (m) {
+        var ev;
+        try { ev = JSON.parse(m.data); } catch (e) { Live.countLine(S, now()); return; }   // unreadable: still one line of the snapshot count
+        try { onEvent(ev); } catch (e) { /* ignore a malformed line */ }
+      });
     });
-    es.onerror = function () { es.close(); es = null; clearTimeout(openTimer); probe(); };
+    // the visitor's own stream broke: CONNECTING until the next hello (never ENGINE SILENT for a cut of the visitor's link)
+    es.onerror = function () { es.close(); es = null; clearTimeout(openTimer); link.onLost(); banner(); probe(); };
   }
   function probe() {
     var ctl = new AbortController(), to = setTimeout(function () { ctl.abort(); }, 10000);

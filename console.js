@@ -384,17 +384,21 @@
     text(img, 72, 6, 'CAM-1', hud(10), 1);
     rect(img, 112, 7, 7, 7, S.mode !== 'SLEEP' ? REC : hud(3));
     text(img, 122, 6, 'REC', hud(10), 1);
-    var sol4 = ('0000' + S.sol).slice(-4);
+    // the live page may lack a value the parity renderer always has (no sol number, no sol start, no image yet): never "null", never
+    // an image read with an unknown size; with all values present the drawing is unchanged (tests/page/render.test.js)
+    var sol4 = typeof S.sol === 'number' ? ('0000' + S.sol).slice(-4) : '----';
     var center = 'SOL ' + (S.sol > 9999 ? S.sol : sol4) + ' | STAGE ' + S.stage + ' ' + label_;
-    var right = (o.contactLabel || 'LAST CONTACT') + ' ' + S.now.slice(0, 10) + ' ' + S.now.slice(11, 16) + ' UTC';
+    var right = typeof S.now === 'string' ? (o.contactLabel || 'LAST CONTACT') + ' ' + S.now.slice(0, 10) + ' ' + S.now.slice(11, 16) + ' UTC' : '';
     var rx = 632 - textWidth(right), cx = Math.max(150, 150 + Math.floor((rx - 8 - 150 - textWidth(center)) / 2));
-    text(img, cx, 6, center, hud(10), 1); text(img, rx, 6, right, hud(10), 1);
+    text(img, cx, 6, center, hud(10), 1); if (right) text(img, rx, 6, right, hud(10), 1);
     rect(img, 0, 20, 640, 1, hud(2));
-    drawCam(img, S.cam, scan);
+    if (S.cam) drawCam(img, S.cam, scan);
     frameRect(img, 7, 23, 322, 202, hud(4));
     text(img, 12, 28, hhmm(S.hour), MARK, 1);
-    var acu = 'SENSOR ' + S.cam.w + 'X' + S.cam.h + ' PX';
-    text(img, 8 + 320 - 4 - textWidth(acu), 24 + 200 - 11, acu, MARK, 1);
+    if (S.cam) {
+      var acu = 'SENSOR ' + S.cam.w + 'X' + S.cam.h + ' PX';
+      text(img, 8 + 320 - 4 - textWidth(acu), 24 + 200 - 11, acu, MARK, 1);
+    } else { var tn = 'NO IMAGE YET'; text(img, 8 + Math.floor((320 - textWidth(tn)) / 2), 24 + 100 + 9, tn, MARK, 1); }
     if (S.stage === 0) { var t0 = 'VISION OFFLINE'; text(img, 8 + Math.floor((320 - textWidth(t0)) / 2), 24 + 100 - 3, t0, MARK, 1); }
     if (S.mode === 'SLEEP') { var t1 = A.mode_labels.SLEEP; text(img, 8 + Math.floor((320 - textWidth(t1)) / 2), 44, t1, MARK, 1); }
     if (S.mode === 'DRILL' || S.mode === 'ANALYZE') {
@@ -403,7 +407,7 @@
     }
     if (S.stuck) text(img, 12, 38, 'STUCK', MARK, 1);
     if (S.tipped) text(img, 12, 47, 'TIPPED', MARK, 1);
-    drawOverlays(img, S);
+    if (S.cam) drawOverlays(img, S);
     drawBrain(img, S, o);
     drawMap(img, S);
     drawTelemetry(img, S);

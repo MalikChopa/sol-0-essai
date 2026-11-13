@@ -4,7 +4,7 @@ main { max-width: 960px; margin: 0 auto; padding: 8px; }
 header { display: flex; gap: 16px; align-items: baseline; }
 h1 { font-size: 20px; margin: 4px 0; letter-spacing: 2px; }
 #state { border: 1px solid var(--fg); padding: 0 8px; }
-#state[data-state="OFFLINE"], #state[data-state="SERVER BUSY"], #state[data-state="ENGINE SILENT"] { background: var(--fg); color: var(--bg); }
+#state[data-state="OFFLINE"], #state[data-state="SERVER BUSY"], #state[data-state="ENGINE SILENT"], #state[data-state="ENGINE HOLD"] { background: var(--fg); color: var(--bg); }
 a { color: var(--dim); }
 canvas, #offimg { display: block; width: 100%; height: auto; image-rendering: pixelated; background: var(--bg); }
 p { margin: 4px 0; color: var(--dim); }
