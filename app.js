@@ -22,6 +22,8 @@
     el.textContent = ({'CONNECTING': T().connecting, 'LIVE': T().live, 'LEARNING': T().learning, 'OFFLINE': T().offline,
                        'SERVER BUSY': T().busy, 'REPLAY': T().replay, 'ENGINE SILENT': T().silent})[st] || st;
     el.dataset.state = st;
+    var sm = $('silentmsg'), txt = (st === 'ENGINE SILENT') ? Live.silentText(S, now(), lang) : null;
+    if (txt) { sm.textContent = txt; sm.hidden = false; } else sm.hidden = true;
   }
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function textLines() {
@@ -43,7 +45,7 @@
     if (t - lastAria >= 60000 && S.hasTick) { lastAria = t; $('summary').textContent = $('line').textContent; }
   }
   function onEvent(ev) {
-    if (ev.e === 'hello' || ev.e === 'status') { Live.applyEvent(S, ev, now()); return; }
+    if (ev.e === 'hello' || ev.e === 'status') { Live.applyEvent(S, ev, now()); if (ev.e === 'hello') link.onHello(); banner(); return; }
     Live.applyEvent(S, ev, now()); link.onEvent(S, ev);
     if (offlineShown) hideOffline();
     limiter.request();
@@ -54,7 +56,7 @@
     es = new EventSource(cfg.stream + '/stream');
     openTimer = setTimeout(function () { if (link.state === 'CONNECTING') fail(); }, Live.OPEN_TIMEOUT_MS);
     es.onopen = function () { clearTimeout(openTimer); link.onOk(); };
-    ['hello', 'sol', 'tick', 'learn', 'ff', 'attempt', 'phase', 'sol_end', 'published', 'status', 'restart'].forEach(function (n) {
+    ['hello', 'sol', 'poses', 'tick', 'learn', 'ff', 'attempt', 'phase', 'sol_end', 'published', 'status', 'restart'].forEach(function (n) {
       es.addEventListener(n, function (m) { try { onEvent(JSON.parse(m.data)); } catch (e) { /* ignore a malformed line */ } });
     });
     es.onerror = function () { es.close(); es = null; clearTimeout(openTimer); probe(); };

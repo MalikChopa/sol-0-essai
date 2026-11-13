@@ -3,6 +3,7 @@
 (function (root) {
   'use strict';
   var MIN_DRAW_MS = 500;            // <= 2 redraws per second (EF-87)
+  var SILENT_S = 120, TICK_GAP_MS = 5000;
   var BUSY_POLL_MS = 9000, OFFLINE_RETRY_MS = 60000, OPEN_TIMEOUT_MS = 10000, FAILS_TO_OFFLINE = 3;
 
   function b64(s) {
@@ -21,18 +22,40 @@
             hd: new Array(16).fill(0), y: [0, 0], z: null, m1: null, m1max: 1e-12, m3: null, m4: null, armPatch: null, sample: null,
             spectrum: null, cat: -1, conf: 0, scan: null, trail: [], map: new Map(), w: null, t: -1, sunTimes: null, ticksPerSol: 1200,
             hasTick: false, sunVec: null, solar: 0, learn: null, learnVals: {}, phases: [], phase: null, nextUtc: null, solEnd: null, published: null,
-            serverUtc: null, engineSilentS: 0, lastEventMs: 0, lastTickMs: 0, attempt: null, ff: null};
+            serverUtc: null, engineSilentS: 0, engineLastMs: null, serverOffsetMs: 0, burst: false, replaySol: null, replayMaxT: -1, neverSeen: false, lastEventMs: 0, lastTickMs: 0, attempt: null, ff: null};
   }
   function mapKey(x, y) { return (x + 32768) * 65536 + (y + 32768); }
+  // Engine liveness is a time, not a flag. `hello` carries the age of the engine's last line; right after it the server replays a
+  // snapshot of OLD lines which proves nothing (web.py `_State.lines()`: sol, poses, then the last lm / cam / tick lines, which
+  // are up to THREE ticks with different `t`, then learn, sol_end, phase). `poses` exists only in that snapshot and its last `t`
+  // is the newest replayed tick. So, after hello, a line is fresh only if the replay cannot contain it: a `status` (never
+  // replayed), a `sol` of another sol than the replayed one, or a `tick` newer than the newest replayed tick. No timing guess.
+  function markEngine(S, ev, nowMs) {
+    var n = nowMs || 0;
+    if (ev.e === 'hello') {
+      S.engineSilentS = ev.engine_silent_s || 0; S.engineLastMs = n - S.engineSilentS * 1000;
+      S.serverOffsetMs = ev.server_utc ? Date.parse(ev.server_utc) - n : 0;
+      S.burst = true; S.replaySol = null; S.replayMaxT = -1; S.neverSeen = S.engineSilentS >= 1000000; return;
+    }
+    if (S.burst) {
+      if (ev.e === 'sol') { if (S.replaySol === null) { S.replaySol = ev.s; S.replayMaxT = -1; return; } if (ev.s === S.replaySol) return; }
+      else if (ev.e === 'poses') { var ts = ev.t || []; S.replayMaxT = ts.length ? ts[ts.length - 1] : -1; return; }
+      else if (ev.e === 'tick') { if (typeof ev.t !== 'number' || ev.t <= S.replayMaxT) return; }
+      else if (ev.e !== 'status') return;
+    }
+    S.burst = false; S.neverSeen = false; S.engineLastMs = n;
+  }
   function applyEvent(S, ev, nowMs) {
     S.lastEventMs = nowMs || 0;
+    markEngine(S, ev, nowMs);
     switch (ev.e) {
-      case 'hello': S.serverUtc = ev.server_utc; S.engineSilentS = ev.engine_silent_s || 0; break;
+      case 'hello': S.serverUtc = ev.server_utc; break;
       case 'sol': {
-        var keep = {serverUtc: S.serverUtc, engineSilentS: S.engineSilentS};
+        var keep = {serverUtc: S.serverUtc, engineSilentS: S.engineSilentS, engineLastMs: S.engineLastMs, serverOffsetMs: S.serverOffsetMs, burst: S.burst, replaySol: S.replaySol, replayMaxT: S.replayMaxT, neverSeen: S.neverSeen};
         var fresh = newView();
         for (var k in fresh) S[k] = fresh[k];
-        S.serverUtc = keep.serverUtc; S.engineSilentS = keep.engineSilentS; S.lastEventMs = nowMs || 0;
+        for (var kk in keep) S[kk] = keep[kk];
+        S.lastEventMs = nowMs || 0;
         S.sol = ev.s; S.stage = ev.stage; S.stageName = ev.stage_name || ''; S.now = ev.now; S.tickMs = ev.tick_ms || 600;
         S.replay = ev.replay === true; S.seasonSols = ev.season_sols || 0; S.camDims = ev.cam; S.w = (ev.w && typeof ev.w === 'object') ? f32(ev.w.m0) : null; S.sunTimes = ev.sun || null; if (ev.ticks) S.ticksPerSol = ev.ticks;
         if (ev.scan0) {   // producer format: {n, explained, xy, labels, ids?, k?, names?}; k and names only when the engine provides them
@@ -119,6 +142,8 @@
       L.busy = false; L.failures++;
       if (L.failures >= FAILS_TO_OFFLINE) L.state = 'OFFLINE';
     };
+    // a received hello is a successful contact (the engine verdict is label()'s job)
+    L.onHello = function () { L.failures = 0; L.busy = false; if (L.state === 'CONNECTING') L.state = 'LIVE'; };
     L.onEvent = function (S, ev) {
       L.failures = 0; L.busy = false;
       if (ev.e === 'phase') L.state = ['learn', 'narrative', 'render', 'check', 'save'].indexOf(ev.ph) >= 0 ? 'LEARNING' : 'LIVE';
@@ -127,15 +152,34 @@
     };
     return L;
   }
+  // Engine silence: no line (any kind, after the snapshot) for SILENT_S, or in an episode no tick for TICK_GAP_MS.
+  // The engine writes a `status` every 60 s while idle, so the same 120 s limit holds in every phase.
+  function engineSilent(S, nowMs) {
+    if (S.engineLastMs === null || S.engineLastMs === undefined) return false;
+    var quiet = nowMs - S.engineLastMs;
+    if (quiet > SILENT_S * 1000) return true;
+    return S.phase === 'episode' && S.lastTickMs > 0 && nowMs - S.lastTickMs > TICK_GAP_MS;
+  }
   function label(L, S, nowMs) {
-    if (L.state === 'LIVE' || L.state === 'LEARNING') {
-      var inEpisode = S.phase === 'episode';
-      if ((S.engineSilentS > 120) || (inEpisode && S.lastTickMs && nowMs - S.lastTickMs > 5000)) return 'ENGINE SILENT';
-    }
+    if ((L.state === 'LIVE' || L.state === 'LEARNING') && engineSilent(S, nowMs)) return 'ENGINE SILENT';
     if (L.state === 'LIVE' && S.replay) return 'REPLAY';
     return L.state;
   }
-
+  function fmtDuration(sec) {
+    var s = Math.max(0, Math.floor(sec)), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+    if (h > 0) return h + ' h ' + m + ' min';
+    if (m > 0) return m + ' min ' + r + ' s';
+    return r + ' s';
+  }
+  // Text shown instead of a black canvas when the engine is silent and no tick was ever received in this visit; data only.
+  function silentText(S, nowMs, lang) {
+    if (S.hasTick) return null;
+    var s = (nowMs - S.engineLastMs) / 1000;
+    if (S.neverSeen) return lang === 'fr' ? 'Le moteur ne tourne pas en ce moment : aucune donnée depuis le démarrage du serveur.'
+                                          : 'The engine is not running right now: no data since the server started.';
+    var d = fmtDuration(s);
+    return lang === 'fr' ? 'Le moteur est silencieux depuis ' + d + '.' : 'The engine has been silent for ' + d + '.';
+  }
   // ---- pause views (design 9.3) ----
   var MOD_NAMES = {m0: 'M0 DRIVE', m1: 'M1 PREDICT', m2: 'M2 VISION', m3: 'M3 ENERGY', m4: 'M4 SAMPLE', m5: 'M5 CATEGORIES', battery: 'TEST COURSES'};
   function valText(mod, v) {
@@ -210,7 +254,7 @@
     return img;
   }
 
-  var api = {b64: b64, newView: newView, applyEvent: applyEvent, makeLimiter: makeLimiter, makeLink: makeLink, label: label,
+  var api = {b64: b64, newView: newView, applyEvent: applyEvent, makeLimiter: makeLimiter, makeLink: makeLink, label: label, silentText: silentText, fmtDuration: fmtDuration, engineSilent: engineSilent,
              renderLive: renderLive, nightText: nightText, seasonText: seasonText, setConsole: function (c) { C = c; }, valText: valText, progressText: progressText,
              MIN_DRAW_MS: MIN_DRAW_MS, BUSY_POLL_MS: BUSY_POLL_MS, OFFLINE_RETRY_MS: OFFLINE_RETRY_MS, OPEN_TIMEOUT_MS: OPEN_TIMEOUT_MS};
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Sol0Live = api;
