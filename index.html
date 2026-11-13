@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: https://raw.githubusercontent.com; connect-src 'self' https://live.sol0.fr https://raw.githubusercontent.com; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Sol-0 live</title>
+<link rel="stylesheet" href="live.css">
+</head>
+<body>
+<main>
+<header><h1>SOL-0</h1><span id="state" data-state="CONNECTING" role="status">CONNECTING</span> <a id="langlink" href="#fr">Français</a></header>
+<canvas id="c" width="640" height="360" role="img" aria-label="Live console of the Sol-0 rover"></canvas>
+<div id="off" hidden><img id="offimg" alt="Last published console animation of Sol-0 (recorded, not live)" width="640" height="360"><p id="offnote"></p></div>
+<p id="line"></p>
+<p id="night"></p>
+<p id="season"></p>
+<p id="age"></p>
+<p id="next"></p>
+<p id="legend"></p>
+<p id="summary" class="sr" aria-live="polite"></p>
+</main>
+<script src="console.js"></script>
+<script src="live.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
