@@ -238,7 +238,7 @@
     if (o.connections !== false) drawConnections(img, S, L);
     L.active.forEach(function (ii) { node(img, COL_IN, L.inY[ii], 2, S.x[ii]); });
     for (j = 0; j < N_H; j++) node(img, COL_H, L.hY[j], 3, S.hd[j]);
-    for (k = 0; k < N_OUT; k++) { node(img, COL_OUT, L.oY[k], 4, S.y[k]); text(img, COL_OUT + 8, L.oY[k] - 3, k ? T(o, 'c.brain.out.r', 'R') : T(o, 'c.brain.out.l', 'L'), hud(10), 1); }
+    for (k = 0; k < N_OUT; k++) { node(img, COL_OUT, L.oY[k], 4, S.y[k]); text(img, COL_OUT + 8, L.oY[k] - 3, k ? T(o, 'c.brain.out.l', 'L') : T(o, 'c.brain.out.r', 'R'), hud(10), 1); }
     if (modActive(1, stage) && S.m1) {
       for (k = 0; k < 3; k++) {
         [[S.m1[k], hud(7)], [S.m1[3 + k], MARK]].forEach(function (pc, row) {
@@ -256,12 +256,13 @@
     if (modActive(4, stage) && S.m4 !== null && S.m4 !== undefined) {
       node(img, COL_MID, M4_Y, 3, S.m4); label(img, COL_MID + 8, M4_Y - 3, T(o, 'c.brain.m4', 'M4 SAMPLE'), hud(10));
     }
-    var txt = T(o, 'c.brain.lr', 'L {u0} R {u1}', {u0: F(o, S.u[0], 2, true), u1: F(o, S.u[1], 2, true)});
+    // index 0 = the right wheel (MIRROR.md): « L u[1] R u[0] »
+    var txt = T(o, 'c.brain.lr', 'L {l} R {r}', {l: F(o, S.u[1], 2, true), r: F(o, S.u[0], 2, true)});
     text(img, 336 + 296 - 4 - textWidth(txt), 172, txt, hud(10), 1);
     var xi0 = Math.abs(S.xi[0]), xi1 = Math.abs(S.xi[1]);
     if (Math.max(xi0, xi1) > 0.0) {
       text(img, 540, 181, T(o, 'c.brain.noise', 'NOISE'), hud(10), 1);
-      [xi0, xi1].forEach(function (a, kk) { rect(img, 574 + 28 * kk, 182, Math.max(1, fl(Math.min(1.0, a) * 24.0 + 0.5)), 4, hud(7)); });
+      [xi1, xi0].forEach(function (a, kk) { rect(img, 574 + 28 * kk, 182, Math.max(1, fl(Math.min(1.0, a) * 24.0 + 0.5)), 4, hud(7)); });
     }
     text(img, 340, 190, T(o, 'c.brain.intent', 'INTENT: {mode}', {mode: modeLabel(S.mode, o)}), hud(10), 1);
     if (asleep) text(img, 340, 172, T(o, 'c.brain.asleep', 'ASLEEP'), MARK, 1);

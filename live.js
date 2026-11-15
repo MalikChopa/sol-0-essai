@@ -24,7 +24,8 @@
             hasTick: false, sunVec: null, solar: 0, learn: null, learnVals: {}, phases: [], phase: null, nextUtc: null, solEnd: null, published: null,
             serverUtc: null, engineSilentS: 0, engineLastMs: null, serverOffsetMs: 0, helloMs: null, exact: false, snapLeft: 0, snapTickAgeS: null,
             snapCamAgeS: null, snapPhaseAgeS: null, burst: false, replaySol: null, replayMaxT: -1, replaySolEnd: false, neverSeen: false, lastEventMs: 0,
-            lastTickMs: 0, phaseSinceMs: null, attempt: null, ff: null, resumeArmed: false, resuming: false};
+            lastTickMs: 0, phaseSinceMs: null, attempt: null, ff: null, resumeArmed: false, resuming: false,
+            heights: new Map(), relief: false, events: null, lmLast: null, snLast: null};        // 3D tab (view3d.js): lmh, snh, sol.events
   }
   // Connection and engine-liveness fields: they describe the visit, not the sol, so a `sol` line keeps them.
   var LINK_KEYS = ['serverUtc', 'engineSilentS', 'engineLastMs', 'serverOffsetMs', 'helloMs', 'exact', 'snapLeft', 'snapTickAgeS', 'snapCamAgeS',
@@ -106,6 +107,7 @@
         S.sol = (typeof ev.s === 'number') ? ev.s : null; S.stage = ev.stage; S.stageName = word(ev.stage_name) ? ev.stage_name : ''; S.now = ev.now; S.tickMs = ev.tick_ms || 600;
         S.slot0 = (typeof ev.slot0 === 'number' && isFinite(ev.slot0)) ? ev.slot0 : null;     // start of the sol's 15-min slot (ms, UTC)
         S.replay = ev.replay === true; S.seasonSols = ev.season_sols || 0; S.camDims = ev.cam; S.w = (ev.w && typeof ev.w === 'object') ? f32(ev.w.m0) : null; S.sunTimes = ev.sun || null; if (ev.ticks) S.ticksPerSol = ev.ticks;
+        S.events = (ev.events && typeof ev.events === 'object') ? ev.events : null;
         if (ev.scan0) {   // producer format: {n, explained, xy, labels, ids?, k?, names?}; k and names only when the engine provides them
           var sc0 = ev.scan0, ids = sc0.ids || null;
           S.scan = {pts: (sc0.xy || []).map(function (p, i) { return [ids ? ids[i] : i, p[0], p[1], sc0.labels[i], -1]; }),
@@ -152,6 +154,8 @@
         if (ev.s === S.sol && Array.isArray(ev.p) && Array.isArray(ev.t)) { S.path = []; S.pathT = -1; ev.p.forEach(function (q, i) { pathAdd(S, ev.t[i], q); }); }
         break;
       case 'ff': S.ff = ev; break;
+      case 'lmh': applyLmh(S, ev); break;
+      case 'snh': applySnh(S, ev); break;
       case 'attempt':
         S.attempt = ev;
         // an engine attempt failed (k >= 0; the publisher writes k = -1): the engine retries without broadcasting ticks (engine.py `_drive`)
@@ -169,6 +173,7 @@
     S.sol = s; S.cam = null; S.camT = null; S.camMs = null; S.now = null; S.slot0 = null; S.w = null; S.sunTimes = null; S.scan = null; S.trail = []; S.path = []; S.pathT = -1;
     S.z = null; S.m1max = 1e-12; S.armPatch = null; S.sample = null; S.spectrum = null; S.cat = -1; S.conf = 0;
     S.learn = null; S.learnVals = {}; S.phases = []; S.solEnd = null; S.attempt = null; S.ff = null;
+    S.heights = new Map(); S.relief = false; S.events = null; S.lmLast = null; S.snLast = null;
   }
   function decodeCam(S, ev) {    // the image only when its size is the known CAM-1 size (sol line), else null
     var d = S.camDims, data = null;
@@ -182,6 +187,32 @@
     if (typeof t !== 'number' || !(t > S.pathT) || !okPose(q)) return;
     S.pathT = t; S.path.push([q[0], q[1]]);
     if (S.path.length > PATH_MAX) S.path.shift();
+  }
+  // 3D tab, relief (DESIGN out/vue3d §6.2): lmh = heights (int16 LE, cm, -32768 unknown) of the window of the `lm` of the same tick,
+  // or (compact form, the engine's) `n` = its known cells and their heights only, in its order; same x0/y0 and known cells, else the
+  // whole line is ignored; snh = heights of that tick's `sn`, in its order. Relief is shown once a valid lmh of this sol came
+  // (S.relief); a sol (or a tick of another sol) starts flat again.
+  function isInt(v) { return typeof v === 'number' && Math.floor(v) === v && Math.abs(v) < 32768; }
+  function i16(s, n) {
+    var u = null, a = [], i;
+    if (typeof s === 'string') { try { u = b64(s); } catch (e) { u = null; } }
+    if (!u || u.length !== 2 * n) return null;
+    for (i = 0; i < n; i++) a.push((u[2 * i] | u[2 * i + 1] << 8) << 16 >> 16);
+    return a;
+  }
+  function applyLmh(S, ev) {
+    var L = S.lmLast, c = ev.n !== undefined, n = 0, j = 0, i, a, h;
+    if (!L || ev.s !== S.sol || ev.t !== L.t || ev.x0 !== L.x0 || ev.y0 !== L.y0) return;
+    for (i = 0; i < 3600; i++) if (L.d[i] !== 255) n++;
+    if ((c && ev.n !== n) || !(a = i16(ev.h, c ? n : 3600))) return;
+    h = c ? [].map.call(L.d, function (v) { return v === 255 ? -32768 : a[j++]; }) : a;
+    for (i = 0; i < 3600; i++) if ((h[i] === -32768) !== (L.d[i] === 255)) return;
+    for (i = 0; i < 3600; i++) if (h[i] !== -32768) S.heights.set(mapKey(L.x0 + i % 60, L.y0 + Math.floor(i / 60)), h[i]);
+    S.relief = true;
+  }
+  function applySnh(S, ev) {
+    var N = S.snLast, h = N && ev.s === S.sol && ev.t === N.t ? i16(ev.h, N.sn.length) : null, i;
+    if (h) for (i = 0; i < h.length; i++) if (h[i] !== -32768) S.heights.set(mapKey(N.sn[i][0], N.sn[i][1]), h[i]);
   }
   function applyTick(S, ev, nowMs, camMs) {
     if (typeof ev.s === 'number' && ev.s !== S.sol) solChanged(S, ev.s);
@@ -205,9 +236,11 @@
       var sn = ev.sn || [];
       var snt = ev.snt || [];   // soil type + 1 of each newly seen cell, aligned with sn
       for (var j = 0; j < sn.length && j < snt.length; j++) S.map.set(mapKey(sn[j][0], sn[j][1]), snt[j]);
+      S.snLast = Array.isArray(sn) && sn.length && sn.every(function (q) { return Array.isArray(q) && isInt(q[0]) && isInt(q[1]); }) ? {t: ev.t, sn: sn} : null;
       if (ev.lm) {              // {x0, y0, d}: soil type per cell, 255 = unknown
         var g = b64(ev.lm.d);
         for (var cy = 0; cy < 60; cy++) for (var cx = 0; cx < 60; cx++) { var v = g[cy * 60 + cx]; if (v !== 255) S.map.set(mapKey(ev.lm.x0 + cx, ev.lm.y0 + cy), v + 1); }
+        S.lmLast = g && g.length === 3600 && isInt(ev.lm.x0) && isInt(ev.lm.y0) ? {t: ev.t, x0: ev.lm.x0, y0: ev.lm.y0, d: g} : null;
       }
       if (S.stage >= 4) S.armPatch = ev.arm ? b64(ev.arm.p) : null;
     }

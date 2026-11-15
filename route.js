@@ -1,12 +1,12 @@
 /* Sol-0 live page v2: the anchor router (DESIGN.md §6). Loaded in <head>, synchronously: it sets the language, the tab and the layout
    mode on <html> before the first paint, so that nothing jumps at load. Pure functions are exported for node tests.
-   Anchors: #<lang>/<tab>[/<part>]  e.g. #fr/live, #en/about, #fr/live/cam, #en/about/brain, #fr/map (the explorable map). No element id
+   Anchors: #<lang>/<tab>[/<part>]  e.g. #fr/live, #en/about, #fr/live/cam, #en/about/brain, #fr/map (the explorable map), #fr/3d (the 3D view). No element id
    contains '/', so the browser never scrolls by itself: the page does (app.js). Old links #fr and #en still work (= live in that language). No storage, no cookie. */
 (function (root) {
   'use strict';
   var PANEL_IDS = ['cam', 'brain', 'map', 'tel', 'inst'];
   // sections of the « How it works » tab (data-sec of the explainer), and short aliases
-  var SECTIONS = ['intro', 'planet', 'body', 'brain', 'learn', 'camera', 'stages', 'console', 'live', 'real', 'journal', 'faq', 'glossary'];
+  var SECTIONS = ['intro', 'planet', 'body', 'brain', 'learn', 'camera', 'stages', 'console', 'view3d', 'live', 'real', 'journal', 'faq', 'glossary'];
   var ALIAS = {what: 'intro', map: 'console', telemetry: 'console', scan: 'console', words: 'glossary', top: 'intro'};
   // the section that explains each panel (help link of the enlarged panel)
   var HELP = {cam: 'camera', brain: 'brain', map: 'console', tel: 'console', inst: 'console'};
@@ -21,6 +21,7 @@
     for (i = 0; i < t.length; i++) if (t[i] === 'fr' || t[i] === 'en') { lang = t[i]; break; }
     if (!lang) lang = /^fr/i.test(String(navLang || '')) ? 'fr' : 'en';
     if (t.indexOf('about') >= 0) tab = 'about';
+    else if (t.indexOf('3d') >= 0) return {lang: lang, tab: '3d', sub: null};                            // the 3D view (view3d.js)
     else if (t.indexOf('map') >= 0 && t.indexOf('live') < 0) return {lang: lang, tab: 'map', sub: null};   // #fr/live/map: the enlarged panel
     for (i = 0; i < t.length; i++) {
       var x = t[i];

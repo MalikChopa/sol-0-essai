@@ -14,7 +14,8 @@
   var lastLine = -Infinity, lastAria = -Infinity, openTimer = null, retryTimer = null, offlineShown = false;
   var lastWaitKey = null, lastDrawLabel = null, lastDrawLang = null, consoleDrawn = false, lastAnn = null, pendingDraw = false;
   var mode = null, modeAt = -Infinity, modeTimer = null, layoutQueued = false, ovId = null, opener = null, aboutY = 0, lastFs = -Infinity;
-  var PCTX = {}, octx = null, dlg = $('ov'), hasDialog = false, limiter = null;
+  var PCTX = {}, octx = null, dlg = $('ov'), hasDialog = false, limiter = null, V3 = null;
+  var reduced = !!(self.matchMedia && self.matchMedia('(prefers-reduced-motion: reduce)').matches);
   var guard = Route.makeGuard(350, {now: now, setTimer: function (f, ms) { return setTimeout(f, ms); }, shared: Route.SWITCH});     // EF-87, every switch (intro.js included)
   function now() { return Date.now(); }
   // the intro cinematic (intro.js) lies above the page: a deep-linked panel waits until it is closed (never two dialogs at once)
@@ -35,6 +36,7 @@
   function drawNow() {
     if (offlineShown || !ready) return;
     if (route.tab === 'map' && !doc.hidden) mapTrail();
+    if (route.tab === '3d' && !doc.hidden && v3()) V3.draw(S);
     if (!liveShown()) { pendingDraw = true; return; }
     pendingDraw = false;
     var lab = Live.label(link, S, now());
@@ -112,6 +114,7 @@
     if (t - lastLine >= 900) {
       lastLine = t; writeTexts(t);
       if (route.tab === 'map' && !doc.hidden) { if (mapDue(t)) mapLoad(); else mapTexts(); }
+      if (V3 && route.tab === '3d') V3.texts();
     }
   }
 
@@ -123,6 +126,7 @@
       return;
     }
     Live.applyEvent(S, ev, now()); link.onEvent(S, ev);
+    if (V3) V3.update(S);
     if (ev.e === 'published') mapPublished();
     if (offlineShown) hideOffline();
     limiter.request();
@@ -133,7 +137,7 @@
     es = new EventSource(cfg.stream + '/stream');
     openTimer = setTimeout(function () { if (link.state === 'CONNECTING') fail(); }, Live.OPEN_TIMEOUT_MS);
     es.onopen = function () { clearTimeout(openTimer); link.onOk(); };
-    ['hello', 'sol', 'poses', 'tick', 'learn', 'ff', 'attempt', 'phase', 'sol_end', 'published', 'status', 'restart'].forEach(function (n) {
+    ['hello', 'sol', 'poses', 'tick', 'lmh', 'snh', 'learn', 'ff', 'attempt', 'phase', 'sol_end', 'published', 'status', 'restart'].forEach(function (n) {
       es.addEventListener(n, function (m) {
         var ev;
         try { ev = JSON.parse(m.data); } catch (e) { Live.countLine(S, now()); return; }   // unreadable: still one line of the snapshot count
@@ -485,12 +489,14 @@
     attr($('langlink'), 'hreflang', lang === 'fr' ? 'en' : 'fr');
     fsLabel();
     if (ovId) $('ov-title').textContent = tt('n.panel.' + ovId);
-    doc.title = route.tab === 'live' ? tt('d.title') : tt(route.tab === 'map' ? 'n.tab.map' : 'n.tab.about') + ' · Sol-0';
+    doc.title = route.tab === 'live' ? tt('d.title') : tt({map: 'n.tab.map', '3d': 'n.v3.title'}[route.tab] || 'n.tab.about') + ' · Sol-0';
     if (ready) mapTexts();
+    if (V3) V3.texts();
   }
   function links() {
     var other = lang === 'fr' ? 'en' : 'fr';
-    ['live', 'map', 'about'].forEach(function (k) { attr($('tab-' + k), 'href', '#' + lang + '/' + k); attr($('tab-' + k), 'aria-current', route.tab === k ? 'page' : null); });
+    ['live', 'map', '3d', 'about'].forEach(function (k) { attr($('tab-' + k), 'href', '#' + lang + '/' + k); attr($('tab-' + k), 'aria-current', route.tab === k ? 'page' : null); });
+    attr($('map-3d'), 'href', '#' + lang + '/3d'); attr($('v3-map'), 'href', '#' + lang + '/map');
     attr($('skip'), 'href', '#' + lang + '/live'); attr($('toabout'), 'href', '#' + lang + '/about');
     attr($('langlink'), 'href', Route.serialize({lang: other, tab: route.tab, sub: route.sub}));
     if (ovId) {
@@ -523,6 +529,9 @@
     } else if (r.tab === 'map') {
       hidePanel(); mapShow();
       if (prev.tab !== 'map' && user) { var hm = $('h-map'); if (hm && hm.focus) hm.focus(); }
+    } else if (r.tab === '3d') {
+      hidePanel(); if (v3()) V3.draw(S);
+      if (prev.tab !== '3d' && user) { var h3 = $('h-3d'); if (h3 && h3.focus) h3.focus(); }
     } else {
       hidePanel();
       if (r.sub) toSection(r.lang, r.sub);
@@ -530,6 +539,17 @@
       else if (prev.tab !== 'about' && self.scrollTo) self.scrollTo(0, aboutY);
       if (prev.tab !== 'about' && user && !r.sub) { var ha = $('h-about'); if (ha && ha.focus) { try { ha.focus({preventScroll: true}); } catch (x) { ha.focus(); } } }
     }
+  }
+  // the 3D tab (view3d.js): created at its first opening; same state S, same limiter, no other connection
+  function v3() {
+    if (!V3 && ready && self.Sol0View3D) {
+      try {
+        V3 = self.Sol0View3D.mount({$: $, tt: tt, palette: assets.palette, font: assets.font.table, reduced: reduced, now: now, visible: function () { return route.tab === '3d' && !doc.hidden; },
+          off: function () { return offlineShown; }, act: function (s) { return Live.activityText(s, txtOpts()).toLowerCase(); },
+          mode: function (m) { return Con.modeLabel(m, txtOpts()); }, dec: function () { return lang === 'fr' ? ',' : '.'; }});
+      } catch (e) { V3 = null; }
+    }
+    return V3;
   }
   function fsLabel() { var b = $('fs'); if (b && ready) b.textContent = tt(doc.fullscreenElement ? 'n.fullscreen.exit' : 'n.fullscreen'); }
 
@@ -647,7 +667,7 @@
     html.lang = lang;
     wire();
     limiter = Live.makeLimiter({now: now, draw: draw, setTimer: function (f, ms) { return setTimeout(f, ms); },
-                                minMs: (self.matchMedia && self.matchMedia('(prefers-reduced-motion: reduce)').matches) ? 1000 : Live.MIN_DRAW_MS});
+                                minMs: reduced ? 1000 : Live.MIN_DRAW_MS});
     layout();
     var canon = Route.serialize(route);       // canonical anchor (#fr -> #fr/live), no new history entry
     if (location.hash !== canon && self.history && history.replaceState) history.replaceState(history.state || null, '', canon);

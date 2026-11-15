@@ -34,7 +34,7 @@
 <a class="skip" id="skip" href="#en/live"><span class="l-fr" lang="fr">Aller à la console</span><span class="l-en" lang="en">Skip to the console</span></a>
 <header id="top">
 <h1>SOL-0</h1>
-<nav id="tabs" aria-label="Page sections"><a id="tab-live" href="#en/live"><span class="l-fr" lang="fr">Direct</span><span class="l-en" lang="en">Live</span></a><a id="tab-map" href="#en/map"><span class="l-fr" lang="fr">Carte</span><span class="l-en" lang="en">Map</span></a><a id="tab-about" href="#en/about"><span class="l-fr" lang="fr">Comment ça marche</span><span class="l-en" lang="en">How it works</span></a></nav>
+<nav id="tabs" aria-label="Page sections"><a id="tab-live" href="#en/live"><span class="l-fr" lang="fr">Direct</span><span class="l-en" lang="en">Live</span></a><a id="tab-map" href="#en/map"><span class="l-fr" lang="fr">Carte</span><span class="l-en" lang="en">Map</span></a><a id="tab-3d" href="#en/3d"><span class="l-fr" lang="fr">3D</span><span class="l-en" lang="en">3D</span></a><a id="tab-about" href="#en/about"><span class="l-fr" lang="fr">Comment ça marche</span><span class="l-en" lang="en">How it works</span></a></nav>
 <span class="tools"><button id="introbtn" type="button" hidden><span aria-hidden="true">&#x25B6;&#xFE0E;</span> <span class="ib-t"><span class="l-fr" lang="fr">Revoir la cinématique</span><span class="l-en" lang="en">Watch the intro</span></span></button><a id="langlink" href="#fr/live"><span class="l-en" lang="fr">Français</span><span class="l-fr" lang="en">English</span></a><button id="fs" type="button" hidden><span class="l-fr" lang="fr">Plein écran</span><span class="l-en" lang="en">Full screen</span></button></span>
 </header>
 <div id="bar" data-nosnippet><span id="state" data-state="CONNECTING"><span class="l-fr" lang="fr">CONNEXION</span><span class="l-en" lang="en">CONNECTING</span></span><span id="solst"></span><span id="age"></span><details id="details"><summary id="infobtn"><span aria-hidden="true">&#x24D8;&#xFE0E;</span> <span class="ib-t"><span class="l-fr" lang="fr">Détails</span><span class="l-en" lang="en">Details</span></span></summary><div id="info">
@@ -81,10 +81,22 @@
 </section>
 <section id="view-map" aria-labelledby="h-map" data-nosnippet>
 <h2 id="h-map" class="sr" tabindex="-1"><span class="l-fr" lang="fr">Carte</span><span class="l-en" lang="en">Map</span></h2>
-<div id="mapbar"><p id="maplabel"></p><span class="mapbtns"><span id="mapzoom"></span><button id="map-out" type="button" aria-label="Zoom out">&minus;</button><button id="map-in" type="button" aria-label="Zoom in">+</button><button id="map-reset" type="button"><span class="l-fr" lang="fr">Recentrer</span><span class="l-en" lang="en">Reset</span></button><button id="map-whole" type="button" hidden><span class="l-fr" lang="fr">Vue d'ensemble</span><span class="l-en" lang="en">Overview</span></button></span></div>
+<div id="mapbar"><p id="maplabel"></p><span class="mapbtns"><a id="map-3d" href="#en/3d"><span class="l-fr" lang="fr">Voir en 3D</span><span class="l-en" lang="en">See in 3D</span></a><span id="mapzoom"></span><button id="map-out" type="button" aria-label="Zoom out">&minus;</button><button id="map-in" type="button" aria-label="Zoom in">+</button><button id="map-reset" type="button"><span class="l-fr" lang="fr">Recentrer</span><span class="l-en" lang="en">Reset</span></button><button id="map-whole" type="button" hidden><span class="l-fr" lang="fr">Vue d'ensemble</span><span class="l-en" lang="en">Overview</span></button></span></div>
 <div id="mapview" tabindex="0" role="application" aria-label="Published map of the area explored by Sol-0" aria-describedby="maphelp"><div id="mapwrap"><canvas id="mapimg" width="1" height="1" aria-hidden="true"></canvas><canvas id="maptrail" width="1" height="1" aria-hidden="true"></canvas></div></div>
 <p id="mapnote"></p>
 <p id="maphelp"><span class="l-fr" lang="fr">La carte publiée : la zone explorée à la fin d'un sol (sombre = jamais vu), telle que publiée sur GitHub (quelques fois par jour ; jusqu'à 15 min de retard). « il y a » compte depuis l'heure de ce sol dans le status.json publié. Glissez pour déplacer, molette ou pincement pour zoomer ; touches : flèches, + et −, 0 pour recentrer.</span><span class="l-en" lang="en">The published map: the explored area at the end of a sol (dark = never seen), as published on GitHub (a few times a day; up to 15 min late). « ago » counts from that sol's time in the published status.json. Drag to move, wheel or pinch to zoom; keys: arrows, + and −, 0 to reset.</span></p>
+</section>
+<section id="view-3d" aria-labelledby="h-3d" data-nosnippet>
+<h2 id="h-3d" class="sr" tabindex="-1"><span class="l-fr" lang="fr">Vue 3D</span><span class="l-en" lang="en">3D view</span></h2>
+<p id="v3-fixed"><span class="l-fr" lang="fr">Vue 3D reconstruite à partir des données du direct. Corps du rover : illustration.</span><span class="l-en" lang="en">3D view rebuilt from the live data. Rover body: illustration.</span></p>
+<div id="v3-bar"><span class="v3seg" role="group" aria-label="Camera mode"><button id="v3-orbit" type="button" aria-pressed="true"><span class="l-fr" lang="fr">Autour</span><span class="l-en" lang="en">Around</span></button><button id="v3-behind" type="button" aria-pressed="false"><span class="l-fr" lang="fr">Derrière</span><span class="l-en" lang="en">Behind</span></button><button id="v3-top" type="button" aria-pressed="false"><span class="l-fr" lang="fr">Dessus</span><span class="l-en" lang="en">Top</span></button></span><button id="v3-out" type="button" aria-label="Zoom out">&minus;</button><button id="v3-in" type="button" aria-label="Zoom in">+</button><button id="v3-re" type="button"><span class="l-fr" lang="fr">⟲ Recentrer</span><span class="l-en" lang="en">⟲ Recentre</span></button><label><input id="v3-trail" type="checkbox" checked> <span class="l-fr" lang="fr">Trace</span><span class="l-en" lang="en">Trail</span></label><label><input id="v3-cone" type="checkbox" checked> <span class="l-fr" lang="fr">Cône</span><span class="l-en" lang="en">Cone</span></label><span id="v3-badge"></span></div>
+<div id="v3-stage" tabindex="0" role="application" aria-label="3D view of Sol-0, rebuilt from the live data" aria-describedby="v3-help"><canvas id="v3-c" width="320" height="180" role="img" aria-label="The rover on the cells already seen during this sol" hidden></canvas><p id="v3-wait"><span class="l-fr" lang="fr">En attente des données du direct</span><span class="l-en" lang="en">Waiting for live data</span></p></div>
+<p id="v3-read"></p>
+<p id="v3-pend"></p>
+<p class="v3act"><button id="v3-desc" type="button"><span class="l-fr" lang="fr">Décrire la scène</span><span class="l-en" lang="en">Describe the scene</span></button><a id="v3-map" href="#en/map"><span class="l-fr" lang="fr">Carte</span><span class="l-en" lang="en">Map</span></a></p>
+<p id="v3-said" aria-live="polite"></p>
+<details id="v3-legend" open><summary><span class="l-fr" lang="fr">Ce qui est réel</span><span class="l-en" lang="en">What is real</span></summary><ul><li><span class="l-fr" lang="fr">Corps du rover : une illustration à l'échelle de ses vraies mesures : 2 roues écartées de 2,5 m, œil à 2 m. Forme, caisson, mât et rayon des roues : choisis.</span><span class="l-en" lang="en">Rover body: an illustration to the scale of its real measurements: 2 wheels 2.5 m apart, eye at 2 m. Shape, box, mast and wheel radius: chosen.</span></li><li><span class="l-fr" lang="fr">Sol plat : tant que le relief n'est pas publié, le sol et le corps sont dessinés à plat. Sa vraie inclinaison : voir l'inclinomètre (en bas à gauche : tangage, puis roulis).</span><span class="l-en" lang="en">Flat ground: until the relief is published, the ground and the body are drawn level. Its real tilt: see the tilt gauges (bottom left: pitch, then roll).</span></li><li><span class="l-fr" lang="fr">Relief : les hauteurs que le moteur publie pour les cases déjà vues, au centimètre près ; le corps est alors posé dessus. Une case vue sans hauteur reste dans le brouillard.</span><span class="l-en" lang="en">Relief: the heights the engine publishes for the cells already seen, to the centimetre; the body then stands on it. A seen cell without a height yet stays in the fog.</span></li><li><span class="l-fr" lang="fr">Rotation des roues : le vrai mouvement de chaque côté, déduit des deux dernières positions. Flèches : la vraie commande du cerveau qui a produit ce mouvement (donnée un pas plus tôt). L'écart entre les deux, c'est le glissement (ou une roue bloquée).</span><span class="l-en" lang="en">Wheel rotation: the real motion of each side, derived from the last two positions. Arrows: the brain's real command that made this motion (given one step earlier). The gap between the two is slip (or a blocked wheel).</span></li><li><span class="l-fr" lang="fr">Brouillard (sombre) : les cases pas encore vues pendant ce sol. Rien n'est deviné.</span><span class="l-en" lang="en">Fog (dark): the cells not seen yet during this sol. Nothing is guessed.</span></li><li><span class="l-fr" lang="fr">Il avance par pas : 1 pas = 72 s de sa journée, sans position inventée entre deux.</span><span class="l-en" lang="en">It moves in steps: 1 step = 72 s of its day, no invented position in between.</span></li><li><span class="l-fr" lang="fr">Couleurs et lumière du sol : celles de sa caméra CAM-1 (sans bruit ni brume).</span><span class="l-en" lang="en">Ground colours and light: those of its camera CAM-1 (without noise or haze).</span></li><li><span class="l-fr" lang="fr">Nuit : le sol n'est pas éclairé ; les traits ambre sont des repères.</span><span class="l-en" lang="en">Night: the ground is not lit; amber lines are guides.</span></li><li><span class="l-fr" lang="fr">Cône : la zone que CAM-1 échantillonne (70°, portée du stade). Points ambre : sa trace pendant ce sol ; croix : sa cible.</span><span class="l-en" lang="en">Cone: the area CAM-1 samples (70°, range of the stage). Amber dots: its trail during this sol; cross: its target.</span></li><li><span class="l-fr" lang="fr">Côtés : la vue garde l'orientation de CAM-1 et de la carte (la droite du rover est à droite dans CAM-1). D et G, comme dans la console : D est la roue droite (la première sortie du cerveau), G la gauche ; chaque flèche et chaque lettre sont dessinées à côté de leur roue.</span><span class="l-en" lang="en">Sides: the view keeps the orientation of CAM-1 and of the map (the rover's right is on the right of CAM-1). R and L, as in the console: R is the right wheel (the brain's first output), L the left one; each arrow and each letter is drawn beside its own wheel.</span></li></ul></details>
+<p id="v3-help"><span class="l-fr" lang="fr">Glisser : tourner · Molette ou pincement : zoom · Double-clic : recentrer · Clavier (vue sélectionnée) : ← → ↑ ↓, + −, 0 recentrer, 1 2 3 modes, T trace, C cône. Autour : tourner librement ; Derrière : suit son cap ; Dessus : orientée comme la carte.</span><span class="l-en" lang="en">Drag: turn · Wheel or pinch: zoom · Double-click: recentre · Keyboard (view selected): ← → ↑ ↓, + −, 0 recentre, 1 2 3 modes, T trail, C cone. Around: turn freely; Behind: follows its heading; Top: oriented like the map.</span></p>
 </section>
 <section id="view-about" aria-labelledby="h-about">
 <h2 id="h-about" class="sr" tabindex="-1"><span class="l-fr" lang="fr">Comment ça marche</span><span class="l-en" lang="en">How it works</span></h2>
@@ -310,7 +322,7 @@
 <h3 id="fr-console" tabindex="-1">La console, panneau par panneau</h3>
 <figure class="x-fig">
 <img class="x-img x-img-m" src="about/img/console-annotee.png" width="1280" height="720" loading="lazy" decoding="async" alt="Console de Sol-0 annotée de 12 pastilles numérotées : titre, image CAM-1, surimpressions, barres de M2, réseau M0, M1, M3, commandes des roues, intention et modules, carte locale, télémétrie, instrument.">
-<figcaption><span class="x-tag">image d'essai, pas Sol-0</span>Vraie image du moteur, d'un rover d'essai (graine de test 20261111, sol 86, stade 3, ancienne cadence de 4 sols par jour) ; seules les pastilles numérotées sont ajoutées. Sa date vient de l'horloge simulée de cet essai. Les libellés y sont en anglais, comme dans les images publiées sur le profil ; sur cette page, ils suivent la langue choisie.</figcaption>
+<figcaption><span class="x-tag">image d'essai, pas Sol-0</span>Vraie image du moteur, d'un rover d'essai (graine de test 20261111, sol 86, stade 3, ancienne cadence de 4 sols par jour) ; seules les pastilles numérotées sont ajoutées. Sa date vient de l'horloge simulée de cet essai. Les libellés y sont en anglais, comme dans les images publiées sur le profil ; sur cette page, ils suivent la langue choisie. Elle date d'avant la correction des noms des roues (15 novembre 2026) : ses « L » et « R » sont inversés (la valeur écrite après « L » est celle de la roue droite).</figcaption>
 </figure>
 <ol>
 <li><strong>Titre</strong> : numéro du sol, stade, heure du dernier contact.</li>
@@ -320,7 +332,7 @@
 <li><strong>M0</strong> : à gauche les entrées (ambre : positif ; bleu : négatif), au milieu les 16 neurones cachés, à droite les sorties. Les traits sont les connexions qui pèsent le plus à cet instant : leur luminosité vaut |poids × entrée|, et un pointillé signale un apport négatif.</li>
 <li><strong>M1</strong> : ce que le prédicteur attendait, face à ce qui s'est vraiment passé.</li>
 <li><strong>M3</strong> : ses trois choix, rouler, soleil ou dormir.</li>
-<li><strong>Roues</strong> : L et R, la commande réellement envoyée ; XI, le petit hasard ajouté pour qu'il essaie des gestes nouveaux.</li>
+<li><strong>Roues</strong> : G (roue gauche) et D (roue droite), la commande réellement envoyée (sur les images du profil, en anglais : L et R) ; XI, le petit hasard ajouté pour qu'il essaie des gestes nouveaux.</li>
 <li><strong>Intention et modules</strong> : le mode en cours ; les modules éveillés, et « ??? » pour ceux pas encore découverts.</li>
 <li><strong>Carte locale</strong> : 60 × 60 cases (300&nbsp;m de côté) autour du rover, ce qu'il a exploré et ce qu'il voit.</li>
 <li><strong>Télémétrie</strong> : les mesures du corps, vitesse (cm/s), batterie, inclinaison, glissement. La batterie s'affiche à partir du stade 3, quand le cerveau commence à la sentir.</li>
@@ -332,6 +344,20 @@
 </figure>
 <p>Sur la page, chaque panneau s'ouvre en plus grand d'un clic, d'un toucher ou avec la touche Entrée, et se referme avec Échap.</p>
 <p class="x-see"><a href="#fr/live">Voir en direct →</a></p>
+</section>
+
+<section data-sec="view3d" aria-labelledby="fr-view3d">
+
+<h3 id="fr-view3d" tabindex="-1">La vue 3D : ce qui est réel</h3>
+<p>L'onglet <strong>3D</strong> montre Sol-0 de l'extérieur, en direct, autour de sa position. Il ne lit que le flux du direct, comme la console : rien n'est calculé à part, rien n'est deviné.</p>
+<ul>
+<li><strong>Réel</strong> : sa position et son cap à chaque pas, son inclinaison, la commande de chaque roue venue du cerveau (avec la lettre de la console, D ou G, à côté de sa roue), le vrai mouvement de chaque roue, sa cible, sa trace du sol, la zone que voit CAM-1, la lumière du soleil, et les cases déjà vues pendant ce sol, avec la couleur que leur donne sa caméra.</li>
+<li><strong>Relief</strong> : quand le moteur publie les hauteurs des cases vues, le sol est dessiné en relief, au centimètre près, et le corps posé dessus ; avant, tout est dessiné à plat, et la page le dit.</li>
+<li><strong>Illustration</strong> : la forme du corps. Seules ses mesures viennent du moteur (2 roues écartées de 2,5&nbsp;m, œil à 2&nbsp;m) ; le caisson, le mât et les roues sont dessinés pour qu'on le reconnaisse.</li>
+<li><strong>Jamais montré</strong> : les cases qu'il n'a pas encore vues restent dans le brouillard, et rien ne bouge entre deux pas.</li>
+</ul>
+<p>La caméra du spectateur est libre : tourner autour de lui, le suivre de derrière ou le regarder du dessus ne change rien à sa vie.</p>
+<p class="x-see"><a href="#fr/3d">Voir la vue 3D →</a></p>
 </section>
 
 <section data-sec="live" aria-labelledby="fr-live">
@@ -668,7 +694,7 @@
 <h3 id="en-console" tabindex="-1">The console, panel by panel</h3>
 <figure class="x-fig">
 <img class="x-img x-img-m" src="about/img/console-annotee.png" width="1280" height="720" loading="lazy" decoding="async" alt="Sol-0 console annotated with 12 numbered dots: title, CAM-1 image, overlays, M2 bars, M0 network, M1, M3, wheel commands, intent and modules, local map, telemetry, instrument.">
-<figcaption><span class="x-tag">test image, not Sol-0</span>Real engine image, from a test rover (test seed 20261111, sol 86, stage 3, former pace of 4 sols a day); only the numbered dots are added. Its date comes from this test's simulated clock. Its labels are in English, as in the images published on the profile; on this page they follow the chosen language.</figcaption>
+<figcaption><span class="x-tag">test image, not Sol-0</span>Real engine image, from a test rover (test seed 20261111, sol 86, stage 3, former pace of 4 sols a day); only the numbered dots are added. Its date comes from this test's simulated clock. Its labels are in English, as in the images published on the profile; on this page they follow the chosen language. It predates the fix of the wheel names (15&nbsp;November 2026): its "L" and "R" are swapped (the value written after "L" is the right wheel's).</figcaption>
 </figure>
 <ol>
 <li><strong>Title</strong>: sol number, stage, time of last contact.</li>
@@ -678,7 +704,7 @@
 <li><strong>M0</strong>: inputs on the left (amber: positive; blue: negative), the 16 hidden neurons in the middle, the outputs on the right. The lines are the connections that weigh the most at this instant: their brightness is |weight × input|, and a dotted line marks a negative contribution.</li>
 <li><strong>M1</strong>: what the predictor expected, against what really happened.</li>
 <li><strong>M3</strong>: its three choices, drive, sun or sleep.</li>
-<li><strong>Wheels</strong>: L and R, the command actually sent; XI, the small randomness added so that it tries new gestures.</li>
+<li><strong>Wheels</strong>: L (left wheel) and R (right wheel), the command actually sent; XI, the small randomness added so that it tries new gestures.</li>
 <li><strong>Intent and modules</strong>: the current mode; the awake modules, and "???" for those not discovered yet.</li>
 <li><strong>Local map</strong>: 60 × 60 cells (300&nbsp;m across) around the rover, what it has explored and what it sees.</li>
 <li><strong>Telemetry</strong>: the body's measures, speed (cm/s), battery, tilt, slip. The battery is shown from stage 3, when the brain starts to sense it.</li>
@@ -690,6 +716,20 @@
 </figure>
 <p>On the page, each panel opens larger with a click, a tap or the Enter key, and closes with Escape.</p>
 <p class="x-see"><a href="#en/live">See it live →</a></p>
+</section>
+
+<section data-sec="view3d" aria-labelledby="en-view3d">
+
+<h3 id="en-view3d" tabindex="-1">The 3D view: what is real</h3>
+<p>The <strong>3D</strong> tab shows Sol-0 from the outside, live, around where it is. It reads only the live stream, as the console does: nothing is computed apart, nothing is guessed.</p>
+<ul>
+<li><strong>Real</strong>: its position and heading at each step, its tilt, the command of each wheel from the brain (with the console's letter, R or L, beside its wheel), the real motion of each wheel, its target, its trail of the sol, the area CAM-1 sees, the sunlight, and the cells already seen during this sol, in the colour its camera gives them.</li>
+<li><strong>Relief</strong>: when the engine publishes the heights of the seen cells, the ground is drawn in relief, to the centimetre, and the body stands on it; until then everything is drawn flat, and the page says so.</li>
+<li><strong>Illustration</strong>: the shape of the body. Only its measurements come from the engine (2 wheels 2.5&nbsp;m apart, eye at 2&nbsp;m); the box, the mast and the wheels are drawn so that it can be recognised.</li>
+<li><strong>Never shown</strong>: the cells it has not seen yet stay in the fog, and nothing moves between two steps.</li>
+</ul>
+<p>The spectator's camera is free: turning around it, following it from behind or looking from above changes nothing in its life.</p>
+<p class="x-see"><a href="#en/3d">See the 3D view →</a></p>
 </section>
 
 <section data-sec="live" aria-labelledby="en-live">
@@ -823,6 +863,7 @@
 <script src="live.js"></script>
 <script src="layout.js"></script>
 <script src="mapview.js"></script>
+<script src="view3d.js"></script>
 <script src="app.js"></script>
 <script src="intro.js"></script>
 </body>

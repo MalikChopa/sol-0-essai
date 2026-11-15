@@ -8,6 +8,7 @@ body { background: var(--bg); min-height: 100vh; min-height: 100dvh; }
 html.js[lang="fr"] .l-en, html.js[lang="en"] .l-fr { display: none; }
 html.js[data-tab="about"] #view-live, html.js[data-tab="live"] #view-about { display: none; }
 html.js[data-tab="map"] #view-live, html.js[data-tab="map"] #view-about, html.js:not([data-tab="map"]) #view-map { display: none; }
+html.js[data-tab="3d"] #view-live, html.js[data-tab="3d"] #view-about, html.js:not([data-tab="3d"]) #view-3d, html:not(.js) #view-3d { display: none; }
 /* without JavaScript (SEO lot A): the explainer in both languages under the <noscript> text; nothing of the live console, which needs
    the script (tabs, language link, status bars, empty console, details) */
 html:not(.js) #skip, html:not(.js) #tabs, html:not(.js) .tools, html:not(.js) #bar, html:not(.js) #stage, html:not(.js) .camnote,
@@ -100,6 +101,22 @@ html[data-mode="panels"] #camnote { display: none; }
 #mapwrap, #mapwrap canvas { position: absolute; left: 0; top: 0; }
 #maptrail { background: transparent; }
 #mapnote, #maphelp { margin: 4px 0; font-size: 14px; color: var(--dim); max-width: 100ch; }
+/* the 3D tab (view3d.js sets the canvas size); targets of 44 px */
+#view-3d { padding: 0 max(8px, env(safe-area-inset-right)) 8px max(8px, env(safe-area-inset-left)); }
+#view-3d p, #v3-legend { margin: 4px 0; font-size: 14px; color: var(--dim); max-width: 100ch; }
+#view-3d #v3-fixed, #view-3d #v3-said, #v3-legend summary { color: var(--fg); }
+#v3-bar, .v3act { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+#v3-bar button, .v3act > *, #map-3d { display: inline-flex; align-items: center; min-width: 44px; min-height: 44px; padding: 0 10px; box-sizing: border-box;
+  border: 1px solid var(--rust); background: var(--bg); color: var(--fg); text-decoration: none; cursor: pointer; }
+#map-3d { min-height: 36px; }
+#v3-bar [aria-pressed="true"] { background: var(--rust); }
+#v3-bar label { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; font-size: 14px; }
+#v3-bar input { width: 20px; height: 20px; accent-color: var(--fg); }
+#v3-badge { font-size: 14px; color: var(--dim); }
+#v3-stage { display: flex; align-items: center; justify-content: center; overflow: hidden; height: calc(100vh - 230px); height: calc(100dvh - 230px);
+  min-height: 200px; border: 1px solid var(--rust); }
+#v3-c { touch-action: none; cursor: grab; }
+#view-3d [hidden] { display: none; }
 .noscript { padding: 16px 0; color: var(--dim); }
 /* compact (phone in landscape): short header and status rows (VERIF-rc14 I2: 32 + 26 px, layout.js CHROME); camera note under the fold */
 html.compact #top { min-height: 32px; }
