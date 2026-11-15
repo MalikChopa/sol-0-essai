@@ -4,11 +4,16 @@
 html { scrollbar-gutter: stable; background: var(--bg); }
 html, body { margin: 0; color: var(--fg); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 16px; line-height: 1.4; }
 body { background: var(--bg); min-height: 100vh; min-height: 100dvh; }
-/* language and tab are set on <html> by route.js before the first paint */
-html[lang="fr"] .l-en, html[lang="en"] .l-fr { display: none; }
-html[data-tab="about"] #view-live, html[data-tab="live"] #view-about { display: none; }
+/* language and tab are set on <html> by route.js before the first paint, with the class `js` */
+html.js[lang="fr"] .l-en, html.js[lang="en"] .l-fr { display: none; }
+html.js[data-tab="about"] #view-live, html.js[data-tab="live"] #view-about { display: none; }
+html.js[data-tab="map"] #view-live, html.js[data-tab="map"] #view-about, html.js:not([data-tab="map"]) #view-map { display: none; }
+/* without JavaScript (SEO lot A): the explainer in both languages under the <noscript> text; nothing of the live console, which needs
+   the script (tabs, language link, status bars, empty console, details) */
+html:not(.js) #skip, html:not(.js) #tabs, html:not(.js) .tools, html:not(.js) #bar, html:not(.js) #stage, html:not(.js) .camnote,
+html:not(.js) #details, html:not(.js) #view-map { display: none; }
 html[data-mode="console"] #panels, html[data-mode="panels"] #console { display: none; }
-html.offline #console, html.offline #panels { display: none; }
+html.offline #console, html.offline #panels, html.offline #camnote { display: none; }
 .sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
 .skip { position: absolute; left: 8px; top: -100px; z-index: 10; background: var(--bg); color: var(--fg); padding: 8px; border: 2px solid var(--fg); }
 .skip:focus { top: 8px; }
@@ -24,21 +29,15 @@ h1 { font-size: 20px; margin: 0; letter-spacing: 2px; }
 #tabs a:hover { color: var(--fg); }
 .tools { margin-left: auto; display: flex; gap: 12px; align-items: center; }
 #fs { background: none; border: 1px solid var(--rust); padding: 2px 8px; cursor: pointer; }
-/* status bar (DESIGN.md §5): the badge, the sol and what it does, the age of the data; stays visible while scrolling */
-#bar, #bar2 { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 14px; font-size: 14px; color: var(--dim); overflow-wrap: anywhere;
-  padding: 0 max(8px, env(safe-area-inset-right)) 0 max(8px, env(safe-area-inset-left)); }
-#bar { position: sticky; top: 0; z-index: 3; min-height: 32px; background: var(--bg); }
-#bar2:empty, #bar2 span:empty, #bar > span:empty { display: none; }
-/* console mode: ONE status row (VERIF-rc14 I2): app.js moves #stagebar and #next into #bar, #bar2 is never shown, so the console keeps
-   its size when the end-of-sol countdown appears; one line, the console's size never follows the length of a text that changes */
-html[data-mode="console"] #bar { flex-wrap: nowrap; overflow: hidden; }
-html[data-mode="console"] #bar2 { display: none; }
-html[data-mode="console"] #bar > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 100 auto; }
-/* VERIF-rc14 I1: the badge and the data age never shrink (the age always keeps its number); the stage and « no image yet » give way
-   first (the canvas shows both), then the sol line, the next sol last */
-html[data-mode="console"] #bar > #state, html[data-mode="console"] #bar > #age { flex: none; }
-html[data-mode="console"] #bar > #noimg, html[data-mode="console"] #bar > #stagebar { flex-shrink: 1000; }
-html[data-mode="console"] #bar > #next { flex-shrink: 1; }
+/* status bar (consigne 53): badge, « Sol n · Stage s », data age, « Details » (the rest); sticky. Badge and age never shrink
+   (VERIF-rc14 I1); « Details » keeps only its ⓘ on a narrow screen */
+#bar { position: sticky; top: 0; z-index: 3; display: flex; flex-wrap: nowrap; align-items: center; gap: 2px 14px; min-height: 32px; font-size: 14px;
+  color: var(--dim); background: var(--bg); padding: 0 max(8px, env(safe-area-inset-right)) 0 max(8px, env(safe-area-inset-left)); }
+#bar > span:empty { display: none; }
+html[data-mode="panels"] #bar { flex-wrap: wrap; }
+#bar > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 100 auto; }
+#bar > #state, #bar > #age { flex: none; }
+#state[data-state="LIVE"]::before { content: "\25CF\FE0E  "; }
 #state { border: 1px solid var(--fg); padding: 0 8px; color: var(--fg); white-space: nowrap; }
 #state[data-state="OFFLINE"], #state[data-state="SERVER BUSY"], #state[data-state="ENGINE SILENT"], #state[data-state="ENGINE HOLD"], #state[data-state="RESUMING"] { background: var(--fg); color: var(--bg); }
 #line { color: var(--fg); }
@@ -51,17 +50,20 @@ html[data-mode="console"] #view-live { padding-top: 0; }
 #console { position: absolute; left: 0; top: 0; width: 640px; height: 360px; }
 canvas, #offimg { display: block; background: var(--bg); image-rendering: crisp-edges; image-rendering: pixelated; }
 #c { width: 100%; height: 100%; }
-#off img { width: 100%; height: auto; max-height: 100%; object-fit: contain; }
+#off img, #off canvas { width: 100%; height: auto; max-height: 100%; object-fit: contain; }
+#off [hidden] { display: none; }
 #offnote { color: var(--dim); }
+#offplay { background: none; border: 1px solid var(--rust); padding: 2px 8px; cursor: pointer; }
 /* clickable zones over the whole console: the panel rectangles in % of 640x360 (= layout.js PANELS, tests/page/layout.test.js) */
 .hit { position: absolute; display: block; margin: 0; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
 .hit:hover, .hit:focus-visible { outline: 2px solid var(--fg); outline-offset: -2px; }
 .hit .tip { display: none; position: absolute; right: 3px; top: 3px; padding: 0 5px; font-size: 14px; line-height: 18px; background: var(--bg); color: var(--fg); border: 1px solid var(--fg); }
 .hit:hover .tip, .hit:focus-visible .tip { display: block; }
 .hit[aria-disabled="true"], .panel[aria-disabled="true"] { cursor: default; }
+#hit-map, #pb-map { cursor: pointer; }
 .hit[aria-disabled="true"]:hover { outline: none; }
 .hit[aria-disabled="true"] .tip { display: none; }
-.nodialog .hit { display: none; }
+.nodialog .hit:not(#hit-map) { display: none; }
 .nodialog .panel { cursor: default; }
 .hit-cam { left: 1.09375%; top: 6.38889%; width: 50.3125%; height: 56.11111%; }
 .hit-brain { left: 52.5%; top: 6.66667%; width: 46.25%; height: 55.55556%; }
@@ -75,20 +77,36 @@ canvas, #offimg { display: block; background: var(--bg); image-rendering: crisp-
 .group.split { flex-direction: column; align-items: center; align-items: safe center; gap: 8px; }
 .panel { display: block; margin: 0; padding: 0; border: 0; background: none; line-height: 0; cursor: zoom-in; }
 .panel:hover canvas, .panel:focus-visible canvas { outline: 2px solid var(--fg); outline-offset: -2px; }
-/* « Details »: what the bar does not say (season, legend, what the data age means) */
-#details { margin: 6px 0 0; color: var(--dim); font-size: 14px; }
-#details summary { cursor: pointer; color: var(--fg); min-height: 24px; }
-#details p { margin: 4px 0; max-width: 90ch; }
+/* « Details »: its text over the page, under the bar */
+#details { margin-left: auto; flex: none; }
+#infobtn { list-style: none; cursor: pointer; color: var(--fg); border: 1px solid var(--rust); padding: 0 8px; white-space: nowrap; }
+#infobtn::-webkit-details-marker { display: none; }
+#info { position: absolute; top: 100%; right: max(8px, env(safe-area-inset-right)); box-sizing: border-box; width: min(64ch, calc(100vw - 16px));
+  max-height: calc(100vh - 96px); max-height: calc(100dvh - 96px); overflow: auto; padding: 4px 12px 8px; background: var(--bg); border: 1px solid var(--rust); }
+#info p { margin: 6px 0; }
+#info p:empty { display: none; }
+@media (max-width: 520px) { #infobtn .ib-t { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
+/* CAM-1's size, under the console (panels: under CAM-1): one 28 px line, the room layout.js keeps (CHROME.details) */
+.camnote { margin: 0; max-width: 100%; min-height: 28px; line-height: 28px; font-size: 14px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html[data-mode="panels"] #camnote { display: none; }
+/* the explorable map (consigne 53): sizes set by app.js */
+#view-map { padding: 0 max(8px, env(safe-area-inset-right)) 8px max(8px, env(safe-area-inset-left)); }
+#mapbar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-height: 44px; }
+#maplabel { margin: 0; color: var(--fg); font-size: 14px; }
+.mapbtns { margin-left: auto; display: flex; gap: 6px; align-items: center; color: var(--dim); font-size: 14px; }
+.mapbtns button { min-width: 36px; min-height: 36px; padding: 0 8px; border: 1px solid var(--rust); background: var(--bg); cursor: pointer; }
+#mapview { position: relative; overflow: hidden; height: calc(100vh - 190px); height: calc(100dvh - 190px); min-height: 220px; border: 1px solid var(--rust);
+  touch-action: none; cursor: grab; user-select: none; }
+#mapwrap, #mapwrap canvas { position: absolute; left: 0; top: 0; }
+#maptrail { background: transparent; }
+#mapnote, #maphelp { margin: 4px 0; font-size: 14px; color: var(--dim); max-width: 100ch; }
 .noscript { padding: 16px 0; color: var(--dim); }
-/* compact (phone in landscape): a short header row and a short status row (VERIF-rc14 I2: 32 + 26 px, layout.js CHROME), « Details »
-   under the fold; the stage is in the canvas header; during the end-of-sol wait the next sol takes the sol line's room */
+/* compact (phone in landscape): short header and status rows (VERIF-rc14 I2: 32 + 26 px, layout.js CHROME); camera note under the fold */
 html.compact #top { min-height: 32px; }
 html.compact h1 { font-size: 16px; }
 html.compact #tabs a { padding: 4px 8px 3px; font-size: 14px; }
 html.compact .tools { font-size: 14px; }
 html.compact #bar { min-height: 26px; font-size: 13px; gap: 2px 10px; }
-html.compact #stagebar { display: none; }
-html.compact #bar.waitnext > #line, html.compact #bar.waitnext > #noimg { display: none; }
 html.compact #view-live { padding-bottom: 4px; }
 /* the enlarged panel (DESIGN.md §4): same pixels, larger; the page darkens in one step, no transition */
 #ov { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: transparent; color: var(--fg); }
@@ -100,6 +118,21 @@ html.compact #view-live { padding-bottom: 4px; }
 .ovbtns a, .ovbtns button { display: inline-block; min-width: 36px; min-height: 36px; line-height: 34px; padding: 0 8px; text-align: center; border: 1px solid var(--rust); background: var(--bg); color: var(--fg); text-decoration: none; cursor: pointer; box-sizing: border-box; }
 #ov-body { display: flex; align-items: center; justify-content: center; height: calc(100% - 44px); }
 #ov-hint { position: absolute; left: 0; right: 0; bottom: 8px; margin: 0; text-align: center; color: var(--dim); font-size: 14px; }
+/* the intro cinematic (intro.js): a dialog above the live, the page darkens in one step, no transition (EF-87); the film is drawn
+   pixel art (640x360, scaled without smoothing); the header button keeps only its ▶ on a narrow or short screen (name kept for readers) */
+#introbtn { background: none; border: 1px solid var(--rust); padding: 2px 8px; cursor: pointer; white-space: nowrap; }
+#intro { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: transparent; color: var(--fg); }
+#intro::backdrop { background: rgba(18, 12, 10, 0.96); }
+#intro [hidden] { display: none; }
+#intro-box { box-sizing: border-box; min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  padding: 8px max(8px, env(safe-area-inset-right)) 8px max(8px, env(safe-area-inset-left)); }
+#intro-label { margin: 0; max-width: 640px; font-size: 14px; color: var(--dim); text-align: center; }
+#intro-v { display: block; width: 100%; max-width: 1280px; height: auto; max-height: calc(100vh - 120px); max-height: calc(100dvh - 120px); aspect-ratio: 16 / 9;
+  object-fit: contain; background: #000; image-rendering: crisp-edges; image-rendering: pixelated; }
+.introbtns { margin: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.introbtns button { min-height: 36px; padding: 0 12px; border: 1px solid var(--rust); background: var(--bg); color: var(--fg); cursor: pointer; }
+@media (max-width: 760px) { #introbtn .ib-t { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; } }
+html.compact #introbtn .ib-t { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 /* « How it works » tab: the explainer's own rules (out/page-v2/explain/explain.css, merged) */
 #view-about { padding: 0 max(8px, env(safe-area-inset-right)) 0 max(8px, env(safe-area-inset-left)); }
 .x{box-sizing:border-box;max-width:76ch;margin:0 auto;padding:8px 16px 56px;color:#f2c38b;background:#120c0a;
@@ -169,3 +202,12 @@ html.compact #view-live { padding-bottom: 4px; }
 @media print{.x{color:#000;background:#fff}.x h2,.x h3,.x h4,.x h5,.x strong,.x a{color:#000}}
 /* Texte réservé aux lecteurs d'écran (légende du tableau des stades) */
 .x-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+/* 404.html (SEC-17): the console's look, both languages, no script; served by Caddy for any unknown path of the page */
+.nf-home { color: var(--fg); text-decoration: none; }
+.nf-main { padding: 16px max(8px, env(safe-area-inset-right)) 32px max(8px, env(safe-area-inset-left)); }
+.nf-box { box-sizing: border-box; max-width: 640px; margin: 24px auto; border: 1px solid var(--rust); padding: 0 16px 16px; }
+.nf-head { margin: 0 -16px 8px; padding: 6px 16px; border-bottom: 1px solid var(--rust); letter-spacing: 1px; }
+.nf-badge { border: 1px solid var(--fg); padding: 0 8px; background: var(--fg); color: var(--bg); }
+.nf-box h2 { font-size: 18px; margin: 16px 0 4px; }
+.nf-box p { color: var(--dim); margin: 6px 0; }
+.nf-links a { display: inline-block; min-height: 24px; margin: 4px 16px 0 0; color: var(--fg); }

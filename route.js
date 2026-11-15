@@ -1,7 +1,7 @@
 /* Sol-0 live page v2: the anchor router (DESIGN.md §6). Loaded in <head>, synchronously: it sets the language, the tab and the layout
    mode on <html> before the first paint, so that nothing jumps at load. Pure functions are exported for node tests.
-   Anchors: #<lang>/<tab>[/<part>]  e.g. #fr/live, #en/about, #fr/live/cam, #en/about/brain. No element id contains '/', so the browser
-   never scrolls by itself: the page does (app.js). Old links #fr and #en still work (= live in that language). No storage, no cookie. */
+   Anchors: #<lang>/<tab>[/<part>]  e.g. #fr/live, #en/about, #fr/live/cam, #en/about/brain, #fr/map (the explorable map). No element id
+   contains '/', so the browser never scrolls by itself: the page does (app.js). Old links #fr and #en still work (= live in that language). No storage, no cookie. */
 (function (root) {
   'use strict';
   var PANEL_IDS = ['cam', 'brain', 'map', 'tel', 'inst'];
@@ -21,6 +21,7 @@
     for (i = 0; i < t.length; i++) if (t[i] === 'fr' || t[i] === 'en') { lang = t[i]; break; }
     if (!lang) lang = /^fr/i.test(String(navLang || '')) ? 'fr' : 'en';
     if (t.indexOf('about') >= 0) tab = 'about';
+    else if (t.indexOf('map') >= 0 && t.indexOf('live') < 0) return {lang: lang, tab: 'map', sub: null};   // #fr/live/map: the enlarged panel
     for (i = 0; i < t.length; i++) {
       var x = t[i];
       if (x === 'fr' || x === 'en' || x === 'live' || x === 'about') continue;
@@ -33,14 +34,23 @@
   function same(a, b) { return !!a && !!b && a.lang === b.lang && a.tab === b.tab && (a.sub || null) === (b.sub || null); }
   // EF-87 guard shared by every visual switch (tab, language, enlarge / close / next panel): at most one switch per `minMs`; a request
   // that comes sooner is applied at last + minMs, and only the latest request is applied (the ones in between are skipped).
+  // `o.shared` ({last}, e.g. SWITCH): several guards of one page (app.js, intro.js) keep their own pending request but also respect
+  // the time of the last switch of any of them, so that together they never switch twice within `minMs`.
+  var SWITCH = {last: -Infinity};
   function makeGuard(minMs, o) {
-    var last = -Infinity, timer = null, pending = null, applied = 0;
-    function fire() { timer = null; var f = pending; pending = null; last = o.now(); applied++; if (f) f(); }
+    var last = -Infinity, timer = null, pending = null, applied = 0, sh = o.shared || null;
+    function since() { return Math.max(last, sh ? sh.last : -Infinity) + minMs - o.now(); }
+    function fire() {
+      timer = null;
+      var w = since();
+      if (sh && w > 0) { timer = o.setTimer(fire, w); return; }      // another guard switched meanwhile
+      var f = pending; pending = null; last = o.now(); if (sh) sh.last = last; applied++; if (f) f();
+    }
     return {
       request: function (fn) {
         pending = fn;
         if (timer !== null) return;
-        var wait = last + minMs - o.now();
+        var wait = since();
         if (wait <= 0) fire(); else timer = o.setTimer(fire, wait);
       },
       pending: function () { return timer !== null; },
@@ -50,13 +60,16 @@
   function modeFor(w, h) { return w >= h ? 'console' : 'panels'; }
 
   var api = {PANEL_IDS: PANEL_IDS, SECTIONS: SECTIONS, ALIAS: ALIAS, HELP: HELP, parse: parse, serialize: serialize, same: same,
-             makeGuard: makeGuard, modeFor: modeFor, tokens: tokens};
+             makeGuard: makeGuard, modeFor: modeFor, tokens: tokens, SWITCH: SWITCH};
   if (typeof module !== 'undefined' && module.exports) { module.exports = api; return; }
   root.Sol0Route = api;
   // before the first paint: language, tab and layout mode on <html> (CSS shows the right view and the right language at once)
   if (typeof document !== 'undefined' && document.documentElement) {
     var r = parse(root.location ? root.location.hash : '', root.navigator ? root.navigator.language : '');
     var html = document.documentElement;
+    // `js` on <html>: the page runs (live.css hides the other language and the other tab only then; without JavaScript the explainer
+    // is readable in both languages and the empty console is not shown)
+    if (html.classList) html.classList.add('js'); else html.className = (html.className ? html.className + ' ' : '') + 'js';
     html.lang = r.lang;
     if (html.dataset) {
       html.dataset.tab = r.tab;

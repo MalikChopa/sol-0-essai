@@ -4,7 +4,7 @@
   'use strict';
   var MIN_DRAW_MS = 500;            // <= 2 redraws per second (EF-87)
   var SILENT_S = 120, TICK_GAP_MS = 5000;
-  var BUSY_POLL_MS = 9000, OFFLINE_RETRY_MS = 60000, OPEN_TIMEOUT_MS = 10000, FAILS_TO_OFFLINE = 3;
+  var BUSY_POLL_MS = 9000, OFFLINE_RETRY_MS = 60000, OPEN_TIMEOUT_MS = 10000, FAILS_TO_OFFLINE = 3, FAILS_TO_BUSY = 3;
 
   function b64(s) {
     if (s === null || s === undefined) return null;
@@ -20,7 +20,7 @@
             pose: [0, 0, 1, 0], target: null, battery: 0, speed: 0, pitch: 0, roll: 0, slip: 0, sun: [0, 0, 0], stuck: false,
             tipped: false, asleep: false, locked: false, drill: 0, nd: 0, u: [0, 0], xi: [0, 0], x: new Array(24).fill(0),
             hd: new Array(16).fill(0), y: [0, 0], z: null, m1: null, m1max: 1e-12, m3: null, m4: null, armPatch: null, sample: null,
-            spectrum: null, cat: -1, conf: 0, scan: null, trail: [], map: new Map(), w: null, t: -1, sunTimes: null, ticksPerSol: 1200,
+            spectrum: null, cat: -1, conf: 0, scan: null, trail: [], path: [], pathT: -1, map: new Map(), w: null, t: -1, sunTimes: null, ticksPerSol: 1200,
             hasTick: false, sunVec: null, solar: 0, learn: null, learnVals: {}, phases: [], phase: null, nextUtc: null, solEnd: null, published: null,
             serverUtc: null, engineSilentS: 0, engineLastMs: null, serverOffsetMs: 0, helloMs: null, exact: false, snapLeft: 0, snapTickAgeS: null,
             snapCamAgeS: null, snapPhaseAgeS: null, burst: false, replaySol: null, replayMaxT: -1, replaySolEnd: false, neverSeen: false, lastEventMs: 0,
@@ -30,15 +30,23 @@
   var LINK_KEYS = ['serverUtc', 'engineSilentS', 'engineLastMs', 'serverOffsetMs', 'helloMs', 'exact', 'snapLeft', 'snapTickAgeS', 'snapCamAgeS',
                    'snapPhaseAgeS', 'burst', 'replaySol', 'replayMaxT', 'replaySolEnd', 'neverSeen'];
   function num(v) { return (typeof v === 'number' && isFinite(v)) ? v : null; }
+  // SEC-14 (FRONT-02): a stream value is checked before drawing; a bad one keeps the previous one (never a guess). Unit components
+  // within [-1, 1] + 1e-6 (engine rounding: dmath.rot, climate.sun_at); short words (mode, phase, stage name, module) <= WORD_MAX chars.
+  var WORD_MAX = 64, UNIT_MAX = 1 + 1e-6, SPC_PTS_MAX = 64, PATH_MAX = 4000;
+  function finiteList(a, n) {
+    if (!Array.isArray(a) || a.length < n) return false;
+    for (var i = 0; i < n; i++) if (num(a[i]) === null) return false;
+    return true;
+  }
+  function unit(v) { return Math.abs(v) <= UNIT_MAX; }
+  function okPose(p) { return finiteList(p, 4) && unit(p[2]) && unit(p[3]); }
+  function okSun(d) { return finiteList(d, 3) && unit(d[0]) && unit(d[1]) && unit(d[2]); }
+  function word(v) { return typeof v === 'string' && v.length <= WORD_MAX; }
   function mapKey(x, y) { return (x + 32768) * 65536 + (y + 32768); }
-  // Engine liveness is a time, not a flag. `hello` carries the age of the engine's last line (`engine_silent_s`); right after it the
-  // server replays a snapshot of OLD lines which proves nothing about the engine.
-  // Exact mode (server live-rc11 and later, web.py `HelloState.lines`): hello says how many snapshot lines follow (`snap_n`), sent in
-  // the order the server read them (so the last phase / tick applied is the engine's current one), and how old the last tick, the last
-  // tick with a CAM-1 image (live-rc12) and the last phase line are (`tick_age_s`, `cam_age_s`, `phase_age_s`). The first `snap_n`
-  // lines after hello are the replay, every later line is fresh.
-  // Fallback (older server, no `snap_n`): the rc10 rule below. A line is fresh only if the replay cannot contain it: a `status` or a
-  // `restart` (never replayed), a `sol` of another sol than the replayed one, or a `tick` newer than the newest `t` of `poses`.
+  // Engine liveness is a time: `hello` carries the age of the engine's last line (`engine_silent_s`); the snapshot after it (OLD lines)
+  // proves nothing. Exact mode (live-rc11+, web.py `HelloState.lines`): `snap_n` snapshot lines follow in read order, with the ages of
+  // the last tick, CAM-1 tick (rc12) and phase line (`tick_age_s`, `cam_age_s`, `phase_age_s`); later lines are fresh. Fallback (no
+  // `snap_n`, rc10): fresh = a `status`, a `restart`, a `sol` of another sol, or a `tick` newer than the newest `t` of `poses`.
   function markEngine(S, ev, nowMs) {
     var n = nowMs || 0;
     if (ev.e === 'hello') {
@@ -95,7 +103,7 @@
         for (var k in nv) S[k] = nv[k];
         for (var kk in keep) S[kk] = keep[kk];
         S.lastEventMs = nowMs || 0;
-        S.sol = (typeof ev.s === 'number') ? ev.s : null; S.stage = ev.stage; S.stageName = ev.stage_name || ''; S.now = ev.now; S.tickMs = ev.tick_ms || 600;
+        S.sol = (typeof ev.s === 'number') ? ev.s : null; S.stage = ev.stage; S.stageName = word(ev.stage_name) ? ev.stage_name : ''; S.now = ev.now; S.tickMs = ev.tick_ms || 600;
         S.slot0 = (typeof ev.slot0 === 'number' && isFinite(ev.slot0)) ? ev.slot0 : null;     // start of the sol's 15-min slot (ms, UTC)
         S.replay = ev.replay === true; S.seasonSols = ev.season_sols || 0; S.camDims = ev.cam; S.w = (ev.w && typeof ev.w === 'object') ? f32(ev.w.m0) : null; S.sunTimes = ev.sun || null; if (ev.ticks) S.ticksPerSol = ev.ticks;
         if (ev.scan0) {   // producer format: {n, explained, xy, labels, ids?, k?, names?}; k and names only when the engine provides them
@@ -112,6 +120,7 @@
         break;
       }
       case 'learn': {
+        if (!word(ev.mod)) break;                            // SEC-14: a module is a short name
         var L = S.learn;
         if (!L || L.mod !== ev.mod) { L = S.learn = {mod: ev.mod, gen: 0, of: 0, best: null, mean: null, bars: []}; }
         L.gen = ev.gen; L.of = ev.of; L.best = ev.best; L.mean = ev.mean;
@@ -120,6 +129,7 @@
         break;
       }
       case 'phase':
+        if (!word(ev.ph)) break;                             // SEC-14: a phase is a short name
         // fallback only (older server, snapshot not in order): a replayed 'idle' of a sol with ticks and no sol_end predates the episode
         if (!S.exact && !fresh && ev.ph === 'idle' && S.replaySol !== null && S.replayMaxT >= 0 && !S.replaySolEnd) break;
         S.phase = ev.ph; S.nextUtc = ev.next || null;          // each phase line carries its own `next` (idle only); never a stale one
@@ -138,6 +148,9 @@
         if (fresh && S.resumeArmed) S.resuming = ev.phase === 'episode';
         break;
       case 'published': S.published = ev; break;
+      case 'poses':        // the map's live track: the sol's poses so far (snapshot), then each new tick's
+        if (ev.s === S.sol && Array.isArray(ev.p) && Array.isArray(ev.t)) { S.path = []; S.pathT = -1; ev.p.forEach(function (q, i) { pathAdd(S, ev.t[i], q); }); }
+        break;
       case 'ff': S.ff = ev; break;
       case 'attempt':
         S.attempt = ev;
@@ -153,7 +166,7 @@
   // times, trail, learning and end-of-sol values). The stage and the CAM-1 size stay the last known ones (they only change with the
   // stage); an image of another size is refused in applyTick.
   function solChanged(S, s) {
-    S.sol = s; S.cam = null; S.camT = null; S.camMs = null; S.now = null; S.slot0 = null; S.w = null; S.sunTimes = null; S.scan = null; S.trail = [];
+    S.sol = s; S.cam = null; S.camT = null; S.camMs = null; S.now = null; S.slot0 = null; S.w = null; S.sunTimes = null; S.scan = null; S.trail = []; S.path = []; S.pathT = -1;
     S.z = null; S.m1max = 1e-12; S.armPatch = null; S.sample = null; S.spectrum = null; S.cat = -1; S.conf = 0;
     S.learn = null; S.learnVals = {}; S.phases = []; S.solEnd = null; S.attempt = null; S.ff = null;
   }
@@ -165,11 +178,21 @@
     if (data.length !== d.w * d.h) { S.camDims = null; return null; }    // another CAM-1 size: the stage changed, its facts are unknown
     return {w: d.w, h: d.h, data: data};
   }
+  function pathAdd(S, t, q) {    // once per tick (the snapshot replays ticks already in `poses`)
+    if (typeof t !== 'number' || !(t > S.pathT) || !okPose(q)) return;
+    S.pathT = t; S.path.push([q[0], q[1]]);
+    if (S.path.length > PATH_MAX) S.path.shift();
+  }
   function applyTick(S, ev, nowMs, camMs) {
     if (typeof ev.s === 'number' && ev.s !== S.sol) solChanged(S, ev.s);
-    S.t = ev.t; S.hour = ev.hr; S.mode = ev.m; S.pose = ev.p; S.target = ev.tg; S.battery = ev.b; S.speed = ev.v;
+    var okP = okPose(ev.p);
+    S.t = ev.t; S.hour = ev.hr; S.battery = ev.b; S.speed = ev.v;
+    if (word(ev.m)) S.mode = ev.m;
+    if (okP) S.pose = ev.p;
+    pathAdd(S, ev.t, ev.p);
+    S.target = finiteList(ev.tg, 2) ? ev.tg : null;      // the engine writes null or [x, y]
     S.pitch = ev.pi; S.roll = ev.ro; S.slip = ev.sl; S.solar = ev.so;
-    if (ev.sd) S.sunVec = ev.sd;
+    if (okSun(ev.sd)) S.sunVec = ev.sd;
     S.sun = S.sunVec ? [S.sunVec[0], S.sunVec[1], S.sunVec[2]] : [0, 0, 0];
     S.stuck = (ev.fl & 1) !== 0; S.tipped = (ev.fl & 2) !== 0; S.asleep = (ev.fl & 4) !== 0; S.locked = (ev.fl & 16) !== 0;   // bit 16 = arm locked (written by the producer from TickView.arm_locked)
     S.u = ev.u; S.xi = ev.xi; S.x = ev.x; S.hd = ev.hd; S.y = ev.y; S.m1 = ev.m1 ? ev.m1[0].concat(ev.m1[1]) : null; S.m3 = ev.m3; S.m4 = ev.m4;
@@ -178,7 +201,7 @@
     if (ev.cam !== undefined) {
       S.cam = decodeCam(S, ev);                 // M4: no image rather than an image read with the wrong size
       S.camT = S.cam ? ev.t : null; S.camMs = S.cam ? (camMs === undefined ? (nowMs || 0) : camMs) : null;
-      S.z = ev.z || null; S.trail.push(ev.p);
+      S.z = ev.z || null; if (okP) S.trail.push(ev.p);
       var sn = ev.sn || [];
       var snt = ev.snt || [];   // soil type + 1 of each newly seen cell, aligned with sn
       for (var j = 0; j < sn.length && j < snt.length; j++) S.map.set(mapKey(sn[j][0], sn[j][1]), snt[j]);
@@ -192,7 +215,7 @@
     if (ev.spc) {
       if (ev.spc.v) S.spectrum = ev.spc.v;
       if (ev.spc.cat !== undefined) { S.cat = ev.spc.cat; S.conf = ev.spc.conf; }
-      if (S.scan) (ev.spc.pts || []).forEach(function (p) { S.scan.pts.push([p[0], p[1], p[2], p[3], ev.t]); });
+      if (S.scan && Array.isArray(ev.spc.pts)) ev.spc.pts.slice(0, SPC_PTS_MAX).forEach(function (p) { if (Array.isArray(p)) S.scan.pts.push([p[0], p[1], p[2], p[3], ev.t]); });
     }
   }
 
@@ -211,19 +234,27 @@
   }
 
   // ---- connection states ----
+  // SEC-04 (VERIFY-ATTACKER-A1): SERVER BUSY also when only the streams are full: /now.json says `streams_full: true` (web.py), or the
+  // stream failed FAILS_TO_BUSY times with no hello while /now.json answers (2xx: a per-visitor share; 5xx: Caddy's 502). `hard` (503,
+  // 429, streams_full): probe /now.json every BUSY_POLL_MS until it clears; else retry the stream every BUSY_POLL_MS instead of 5 s.
   function makeLink() {
-    var L = {state: 'CONNECTING', failures: 0, busy: false, lastOkMs: null};
-    L.onOk = function () { L.failures = 0; L.busy = false; if (L.state === 'OFFLINE' || L.state === 'SERVER BUSY') L.state = 'CONNECTING'; };
-    L.onHttp = function (status) {
-      if (status === 503 || status === 429) { L.state = 'SERVER BUSY'; L.busy = true; L.failures = 0; return; }
-      if (status >= 200 && status < 300) L.onOk();
+    var L = {state: 'CONNECTING', failures: 0, busy: false, hard: false, streamFails: 0, lastOkMs: null};
+    function busy(hard) { L.state = 'SERVER BUSY'; L.busy = true; L.hard = hard; L.failures = 0; }
+    L.onOk = function () { L.failures = 0; L.busy = false; L.hard = false; if (L.state === 'OFFLINE' || L.state === 'SERVER BUSY') L.state = 'CONNECTING'; };
+    L.onHttp = function (status, full) {
+      var ok = status >= 200 && status < 300;
+      if (status === 503 || status === 429 || (ok && full === true)) { busy(true); return; }
+      if (L.streamFails >= FAILS_TO_BUSY && (ok || status >= 500)) { busy(false); return; }
+      if (ok) L.onOk();
     };
+    // the visitor's stream broke (es.onerror); only a hello proves the stream works again
+    L.onStreamError = function () { L.streamFails++; };
     L.onNetworkError = function () {
       L.busy = false; L.failures++;
       if (L.failures >= FAILS_TO_OFFLINE) L.state = 'OFFLINE';
     };
     // a received hello is a successful contact (the engine verdict is label()'s job)
-    L.onHello = function () { L.failures = 0; L.busy = false; if (L.state === 'CONNECTING') L.state = 'LIVE'; };
+    L.onHello = function () { L.failures = 0; L.streamFails = 0; L.busy = false; L.hard = false; if (L.state === 'CONNECTING') L.state = 'LIVE'; };
     // M1 (live-rc12): the visitor's own stream broke (app.js es.onerror). Until the next hello the page knows nothing new about the
     // engine: CONNECTING, never ENGINE SILENT (label() only judges the engine in LIVE / LEARNING). OFFLINE / SERVER BUSY stay.
     L.onLost = function () { if (L.state !== 'OFFLINE' && L.state !== 'SERVER BUSY') L.state = 'CONNECTING'; };
@@ -246,10 +277,8 @@
     return S.phase === 'episode' && S.hasTick && nowMs - S.lastTickMs > TICK_GAP_MS;
   }
   function replaying(S) { return S.exact && S.snapLeft > 0; }
-  // RC12-verif I2 (live-rc13): what the page may show, on the canvas (app.js draw) and in the text lines: a tick of this visit, or a
-  // `sol` line once the snapshot is complete. A `sol` line without any tick yet (the start of a sol, or a late start whose `ff`
-  // catch-up is computed without broadcast) shows the bare view (sol number, NO IMAGE YET): never the previous sol's image, never the
-  // console filled with newView defaults. During the snapshot (or the burst of an older server) the page waits for the rest of it.
+  // RC12-verif I2 (live-rc13): drawable = a tick of this visit, or a `sol` line once the snapshot is complete (bare view, NO IMAGE YET:
+  // never the previous sol's image nor newView defaults). During the snapshot (or an older server's burst) the page waits.
   function canDraw(S) {
     if (S.hasTick) return true;
     if (typeof S.sol !== 'number') return false;
@@ -269,11 +298,8 @@
   // (Kept here, not moved to export_assets.py I18N: see docs/milestones/LIVE.md, « Âge de l'image et reprises ».)
   var EXTRA_LABELS = {'ENGINE HOLD': {en: 'ENGINE ON HOLD', fr: 'MOTEUR EN PAUSE'}, 'RESUMING': {en: 'RESUMING', fr: 'REPRISE'}};
   function extraLabel(st, lang) { var x = EXTRA_LABELS[st]; return x ? (lang === 'fr' ? x.fr : x.en) : null; }
-  // Age of the data on screen = age of the OLDEST thing drawn: max(age of the last tick (telemetry, brain), age of the drawn CAM-1
-  // image, which comes every `cam_period` ticks only and may be much older after a restart); no tick: the engine's last line.
-  // Dates are receive times (fresh lines) or the server's read times (cam_age_s, tick_age_s): rounded UP to the second, the shown age
-  // is never below the true age to the second; it can be below the exact age by the server's read delay plus the network transit
-  // (not measured).
+  // Data age = age of the OLDEST thing drawn: the last tick, or the drawn CAM-1 image (every `cam_period` ticks, older after a restart);
+  // no tick: the engine's last line. Receive or server read times, rounded UP to the second (server read delay + transit not measured).
   function dataAgeS(S, nowMs) {
     var ref;
     if (S.hasTick) {
@@ -281,6 +307,44 @@
       if (S.cam && typeof S.camMs === 'number') ref = Math.min(ref, S.camMs);
     } else ref = (S.engineLastMs === null || S.engineLastMs === undefined) ? S.lastEventMs : S.engineLastMs;
     return Math.max(0, Math.ceil((nowMs - ref) / 1000));
+  }
+  // ---- local time and « alive for » (live-rc16): DOM texts only, the canvas keeps its UTC ----
+  // The visitor's time with a fixed 24 h clock like the UTC one (Intl.DateTimeFormat; `tz` only for the tests, else the visitor's zone).
+  function localHms(ms, withSec, tz) {
+    try {
+      var f = {hour: '2-digit', minute: '2-digit', hourCycle: 'h23'};
+      if (withSec) f.second = '2-digit';
+      if (tz) f.timeZone = tz;
+      return new Intl.DateTimeFormat('en-GB', f).format(new Date(ms));
+    } catch (e) {
+      var d = new Date(ms);
+      return pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + (withSec ? ':' + pad2(d.getSeconds()) : '');
+    }
+  }
+  // « 14:45 UTC · 15:45 your time »; the visitor's zone shows the same clock as UTC: « 14:45 UTC » once. Nothing for an unreadable time.
+  function timeBoth(ms, withSec, o, tz) {
+    if (typeof ms !== 'number' || !isFinite(ms)) return '';
+    var d = new Date(ms), u = pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes()) + (withSec ? ':' + pad2(d.getUTCSeconds()) : ''), l = localHms(ms, withSec, tz);
+    if (l === u) return tr(o, 'd.t.utc', '{u} UTC', {u: u});
+    return tr(o, 'd.t.both', '{u} UTC · {l} your time', {u: u, l: l});
+  }
+  // « 3 h 12 min », « 2 d 3 h » from whole seconds
+  function aliveDuration(sec, o) {
+    var s = Math.max(0, Math.floor(sec)), d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+    if (d > 0) return tr(o, 'd.alive.dur.d', '{d} d {h} h', {d: d, h: h});
+    if (h > 0) return tr(o, 'd.alive.dur.h', '{h} h {m} min', {h: h, m: m});
+    return tr(o, 'd.alive.dur.m', '{m} min', {m: m});
+  }
+  var BIRTH_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
+  function birthMs(iso) { return (typeof iso === 'string' && BIRTH_RE.test(iso) && isFinite(Date.parse(iso))) ? Date.parse(iso) : null; }
+  // « Alive for 3 h 12 min · 13 sols »: the birth is a dated fact of the build (config.json), the sol number is the stream's (never
+  // computed from the clock); nothing when the birth is absent, unreadable or in the future, the sols part only when the stream gave one.
+  function aliveText(birth, nowMs, sol, lang, o) {
+    if (typeof birth !== 'number' || !isFinite(birth) || nowMs < birth) return '';
+    var d = aliveDuration((nowMs - birth) / 1000, o);
+    if (typeof sol !== 'number' || !isFinite(sol)) return tr(o, 'd.alive.nosol', 'Alive for {d}', {d: d});
+    var one = lang === 'fr' ? sol < 2 : sol === 1;
+    return one ? tr(o, 'd.alive.one', 'Alive for {d} · {n} sol', {d: d, n: sol}) : tr(o, 'd.alive', 'Alive for {d} · {n} sols', {d: d, n: sol});
   }
   // Seconds left before `next` on the server clock (hello's server_utc), or null when there is no next or it is already past:
   // never a countdown frozen at 0:00.
@@ -558,10 +622,25 @@
     if (!S.stageName) return '';
     return tr(o, 'd.stagebar', 'STAGE {s} · {name}', {s: S.stage, name: C.stageLabel(S, o)});
   }
+  // the status bar's « Sol 102 · Stage 2 » (consigne 53); the stage once a sol line gave it
+  function solStage(S, o) {
+    if (typeof S.sol !== 'number') return '';
+    return S.stageName ? tr(o, 'd.solst', 'Sol {s} · Stage {n}', {s: S.sol, n: S.stage}) : tr(o, 'd.sol', 'Sol {s}', {s: S.sol});
+  }
+  // CAM-1's size (sol line's `cam`, else the acuity table, config/rover.toml [camera]) and the first later stage that sees more
+  function dim(v) { return typeof v === 'number' && v >= 1 && v <= 4096 && Math.floor(v) === v; }
+  function camNote(S, o, acuity) {
+    var a = Array.isArray(acuity) ? acuity : [], d = S.camDims, st = S.stageName ? S.stage : null, c = null, i;
+    if (d && dim(d.w) && dim(d.h)) c = [d.w, d.h]; else if (st !== null && a[st]) c = a[st];
+    if (!c || st === null) return c ? tr(o, 'd.cam.now', 'CAM-1 · View: {w}×{h} px', {w: c[0], h: c[1]}) : '';
+    for (i = st + 1; i < a.length; i++) if (a[i][0] * a[i][1] > c[0] * c[1]) return tr(o, 'd.cam.next', 'CAM-1 · View: {w}×{h} px · {nw}×{nh} at stage {n}', {w: c[0], h: c[1], nw: a[i][0], nh: a[i][1], n: i});
+    return tr(o, 'd.cam.max', 'CAM-1 · View: {w}×{h} px (maximum)', {w: c[0], h: c[1]});
+  }
   // the accessible sentence (#summary, at most once a minute)
   function summaryText(S, o, ageTxt, params) {
     var s = typeof S.sol === 'number' ? S.sol : '--';
     if (!S.hasTick) return tr(o, 'd.summary.none', 'Sol {s}: no step received yet, data age {t}.', {s: s, t: ageTxt});
+    if (S.stageName) s += tr(o, 'd.summary.stage', ', stage {n}', {n: S.stage});
     var hh = Math.floor(S.hour), mm = Math.floor((S.hour - hh) * 60), act = activityText(S, o).split(' | ').join(', ').split(' · ').join(', ').toLowerCase();
     var bat = C.batteryUnlocked(S.stage) ? tr(o, 'd.summary.bat', 'battery {b}%', {b: Math.floor(S.battery * 100 + 1e-9)})
       : tr(o, 'd.summary.batlocked', 'battery shown from stage {n}', {n: C.batteryUnlockStage()});
@@ -593,12 +672,13 @@
     return img;
   }
 
-  var api = {b64: b64, newView: newView, applyEvent: applyEvent, makeLimiter: makeLimiter, makeLink: makeLink, label: label, silentText: silentText, dataAgeS: dataAgeS, fmtDuration: fmtDuration, engineSilent: engineSilent,
+  var api = {b64: b64, newView: newView, applyEvent: applyEvent, makeLimiter: makeLimiter, makeLink: makeLink, label: label, silentText: silentText, dataAgeS: dataAgeS, fmtDuration: fmtDuration, timeBoth: timeBoth, localHms: localHms, aliveText: aliveText, aliveDuration: aliveDuration, birthMs: birthMs, engineSilent: engineSilent,
              holdText: holdText, resumeText: resumeText, noImageText: noImageText, nextLeftS: nextLeftS, canDraw: canDraw, pauseTitle: pauseTitle, lineText: lineText, extraLabel: extraLabel, countLine: function (S, nowMs) { return markEngine(S, {e: '?'}, nowMs); },
              renderLive: renderLive, nightText: nightText, seasonText: seasonText, setConsole: function (c) { C = c; }, valText: valText, progressText: progressText,
              tr: tr, pauseTitleText: pauseTitleText, headerRight: headerRight, recOn: recOn, waitKey: waitKey, stateKey: stateKey, renderWaiting: renderWaiting,
-             activityText: activityText, barLine: barLine, stageBar: stageBar, seasonLine: seasonLine, summaryText: summaryText,
+             activityText: activityText, barLine: barLine, stageBar: stageBar, solStage: solStage, camNote: camNote, seasonLine: seasonLine, summaryText: summaryText,
              STATE_KEY: STATE_KEY, WAIT_EN: WAIT_EN, MOD_NAMES: MOD_NAMES, PH_EN: PH_EN, DOM_FR: DOM_FR,
-             MIN_DRAW_MS: MIN_DRAW_MS, BUSY_POLL_MS: BUSY_POLL_MS, OFFLINE_RETRY_MS: OFFLINE_RETRY_MS, OPEN_TIMEOUT_MS: OPEN_TIMEOUT_MS};
+             MIN_DRAW_MS: MIN_DRAW_MS, BUSY_POLL_MS: BUSY_POLL_MS, OFFLINE_RETRY_MS: OFFLINE_RETRY_MS, OPEN_TIMEOUT_MS: OPEN_TIMEOUT_MS,
+             FAILS_TO_BUSY: FAILS_TO_BUSY, WORD_MAX: WORD_MAX, okPose: okPose, okSun: okSun};
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Sol0Live = api;
 })(typeof self !== 'undefined' ? self : this);

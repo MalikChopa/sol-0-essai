@@ -41,7 +41,12 @@
     rect(img, x, y, w, 1, c); rect(img, x, y + h - 1, w, 1, c); rect(img, x, y, 1, h, c); rect(img, x + w - 1, y, 1, h, c);
     if (BOXES && !NOBOX) BOXES.push({x: x, y: y, w: w, h: h, frame: true});      // tests: a text never crosses a frame
   }
+  // SEC-14 (FRONT-02): a Bresenham line ends only when (x0, y0) reaches (x1, y1). Every legitimate line of the console joins two whole
+  // pixels at most a canvas diagonal apart; anything else (NaN, a string, a fraction, 1e8 from a malformed stream line) draws nothing,
+  // so no line can loop forever or for billions of steps.
+  function wholePx(v) { return typeof v === 'number' && isFinite(v) && Math.floor(v) === v; }
   function line(img, x0, y0, x1, y1, c, dotted, thick) {
+    if (!(wholePx(x0) && wholePx(y0) && wholePx(x1) && wholePx(y1)) || Math.abs(x1 - x0) + Math.abs(y1 - y0) > 4 * (W + H)) return;
     var dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1, err = dx + dy, n = 0;
     thick = thick || 1;
     for (;;) {
@@ -73,10 +78,13 @@
     }
   }
   function hasAccent(s) { for (var i = 0; i < s.length; i++) if (ACCENTS[s[i]]) return true; return false; }
+  // SEC-14: at most TEXT_MAX characters are drawn (a legitimate text never exceeds 107 = 640 / 6 + 1, so its pixels never change);
+  // a malformed stream line with an 80 KB string costs at most TEXT_MAX glyphs per text
+  var TEXT_MAX = 160;
   function text(img, x, y, s, color, scale) {
     scale = scale || 1;
-    var acc = false;
-    for (var i = 0; i < s.length; i++) {
+    var acc = false, n = Math.min(s.length, TEXT_MAX);
+    for (var i = 0; i < n; i++) {
       var cols = GLYPHS[s[i]], mark = null;
       if (!cols && ACCENTS[s[i]]) { cols = GLYPHS[ACCENTS[s[i]][0]]; mark = ACCENTS[s[i]][1]; acc = true; }
       if (!cols) { if (STRICT) throw new Error('no glyph for ' + JSON.stringify(s[i]) + ' in ' + JSON.stringify(s)); cols = GLYPHS['?']; }

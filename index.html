@@ -3,10 +3,30 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: https://raw.githubusercontent.com; connect-src 'self' https://live.sol0.fr https://raw.githubusercontent.com; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://raw.githubusercontent.com; media-src 'self'; connect-src 'self' https://live.sol0.fr https://raw.githubusercontent.com; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="img-src 'self' https://raw.githubusercontent.com/MalikChopa/MalikChopa/state/; connect-src 'self' https://live.sol0.fr https://raw.githubusercontent.com/MalikChopa/MalikChopa/state/">
 <meta name="referrer" content="no-referrer">
 <meta name="color-scheme" content="dark">
-<title>Sol-0 live</title>
+<title>Sol-0 live: a simulated rover learning on its own</title>
+<meta name="description" id="mdesc" content="Watch Sol-0 live: a simulated rover with tiny hand-written neural networks, learning on its own on a rust-coloured planet. Nothing is scripted.">
+<link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" href="icons/icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="canonical" href="https://sol0.fr/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Sol-0">
+<meta property="og:title" content="Sol-0 live: a simulated rover learning on its own">
+<meta property="og:description" content="Watch Sol-0 live: a simulated rover with tiny hand-written neural networks, learning on its own on a rust-coloured planet. Nothing is scripted.">
+<meta property="og:url" content="https://sol0.fr/">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="fr_FR">
+<meta property="og:image" content="https://sol0.fr/about/img/bande-annonce-image180.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="640">
+<meta property="og:image:height" content="360">
+<meta property="og:image:alt" content="Pixel-art illustration, not a real image of Sol-0: a wheeled rover with a camera mast in a rust desert, marked ILLUSTRATION.">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Sol-0","alternateName":["SOL-0","Sol-0 live"],"url":"https://sol0.fr/","inLanguage":["en","fr"]}</script>
 <link rel="stylesheet" href="live.css">
 <script src="route.js"></script>
 </head>
@@ -14,17 +34,30 @@
 <a class="skip" id="skip" href="#en/live"><span class="l-fr" lang="fr">Aller à la console</span><span class="l-en" lang="en">Skip to the console</span></a>
 <header id="top">
 <h1>SOL-0</h1>
-<nav id="tabs" aria-label="Page sections"><a id="tab-live" href="#en/live"><span class="l-fr" lang="fr">Direct</span><span class="l-en" lang="en">Live</span></a><a id="tab-about" href="#en/about"><span class="l-fr" lang="fr">Comment ça marche</span><span class="l-en" lang="en">How it works</span></a></nav>
-<span class="tools"><a id="langlink" href="#fr/live"><span class="l-en" lang="fr">Français</span><span class="l-fr" lang="en">English</span></a><button id="fs" type="button" hidden><span class="l-fr" lang="fr">Plein écran</span><span class="l-en" lang="en">Full screen</span></button></span>
+<nav id="tabs" aria-label="Page sections"><a id="tab-live" href="#en/live"><span class="l-fr" lang="fr">Direct</span><span class="l-en" lang="en">Live</span></a><a id="tab-map" href="#en/map"><span class="l-fr" lang="fr">Carte</span><span class="l-en" lang="en">Map</span></a><a id="tab-about" href="#en/about"><span class="l-fr" lang="fr">Comment ça marche</span><span class="l-en" lang="en">How it works</span></a></nav>
+<span class="tools"><button id="introbtn" type="button" hidden><span aria-hidden="true">&#x25B6;&#xFE0E;</span> <span class="ib-t"><span class="l-fr" lang="fr">Revoir la cinématique</span><span class="l-en" lang="en">Watch the intro</span></span></button><a id="langlink" href="#fr/live"><span class="l-en" lang="fr">Français</span><span class="l-fr" lang="en">English</span></a><button id="fs" type="button" hidden><span class="l-fr" lang="fr">Plein écran</span><span class="l-en" lang="en">Full screen</span></button></span>
 </header>
-<div id="bar"><span id="state" data-state="CONNECTING"><span class="l-fr" lang="fr">CONNEXION</span><span class="l-en" lang="en">CONNECTING</span></span><span id="line"></span><span id="age"></span><span id="noimg"></span></div>
-<div id="bar2"><span id="stagebar"></span><span id="next"></span></div>
-<p id="silentmsg" role="status" hidden></p>
-<p id="stateann" class="sr" role="status"></p>
+<div id="bar" data-nosnippet><span id="state" data-state="CONNECTING"><span class="l-fr" lang="fr">CONNEXION</span><span class="l-en" lang="en">CONNECTING</span></span><span id="solst"></span><span id="age"></span><details id="details"><summary id="infobtn"><span aria-hidden="true">&#x24D8;&#xFE0E;</span> <span class="ib-t"><span class="l-fr" lang="fr">Détails</span><span class="l-en" lang="en">Details</span></span></summary><div id="info">
+<p><span id="line"></span> <span id="noimg"></span></p>
+<p id="stagebar"></p>
+<p id="camdet"></p>
+<p id="alive"></p>
+<p id="next"></p>
+<p id="season"></p>
+<p><span class="l-fr" lang="fr">CAM-1 montre exactement ce que reçoit le cerveau : peu de pixels au début, une vue plus fine aux stades suivants (la table du moteur).</span><span class="l-en" lang="en">CAM-1 shows exactly what the brain receives: a few pixels at first, a sharper view at later stages (the engine's own table).</span></p>
+<p><span class="l-fr" lang="fr">SOL d/n : la place de ce sol dans l'année de la planète, comptée à partir de 0 comme les sols (une année = n sols ; en année 1, d est le numéro du sol). DURÉE DU JOUR : longueur du jour simulé de ce sol.</span><span class="l-en" lang="en">SOL d/n: the place of this sol in the planet's year, counted from 0 like the sols (one year = n sols; in year 1, d is the sol's number). DAYLIGHT: length of the simulated day of this sol.</span></p>
+<p><span class="l-fr" lang="fr">DÉBUT DU SOL : le début, en heure UTC, du créneau de 15 minutes de ce sol. L'heure en haut à gauche de CAM-1 est l'horloge du rover.</span><span class="l-en" lang="en">SOL START: the start, in UTC, of the 15-minute slot of this sol. The hour at the top left of CAM-1 is the rover's own clock.</span></p>
+<p><span class="l-fr" lang="fr">Âge de la donnée : l'âge de la plus ancienne chose dessinée, le dernier pas calculé ou la dernière image de CAM-1 (une image n'arrive que tous les quelques pas). Il grandit pendant la pause de fin de sol et quand le moteur se tait.</span><span class="l-en" lang="en">Data age: the age of the oldest thing drawn, the last computed step or the last CAM-1 image (an image only comes every few steps). It grows during the end-of-sol pause and when the engine is silent.</span></p>
+<p id="legend"><span class="l-fr" lang="fr">Connexions : luminosité = |poids x entrée|, pointillé = négatif. Les nœuds sont exacts.</span><span class="l-en" lang="en">Connections: brightness = |weight x input|, dotted = negative. Nodes are exact.</span></p>
+<p><span class="l-fr" lang="fr">Cliquez ou touchez un panneau pour l'agrandir ; la carte ouvre la carte explorable.</span><span class="l-en" lang="en">Click or tap a panel to enlarge it; the map opens the explorable map.</span></p>
+<p><a id="toabout" href="#en/about"><span class="l-fr" lang="fr">Comment ça marche →</span><span class="l-en" lang="en">How it works →</span></a></p>
+</div></details></div>
+<p id="silentmsg" role="status" data-nosnippet hidden></p>
+<p id="stateann" class="sr" role="status" data-nosnippet></p>
 <main id="main">
 <section id="view-live" aria-labelledby="h-live">
 <h2 id="h-live" class="sr" tabindex="-1"><span class="l-fr" lang="fr">Direct</span><span class="l-en" lang="en">Live</span></h2>
-<noscript><div class="noscript"><p lang="fr">Cette page a besoin de JavaScript pour afficher le direct.</p><p lang="en">This page needs JavaScript to show the live console.</p></div></noscript>
+<noscript><div class="noscript"><p lang="fr">Sol-0 est un rover simulé qui apprend seul sur une planète couleur rouille, avec un cerveau de six petits modules (de très petits réseaux de neurones écrits à la main, et un classeur). Cette page le montre en direct ; l'explication ci-dessous se lit sans JavaScript.</p><p lang="en">Sol-0 is a simulated rover that learns on its own on a rust-coloured planet, with a brain of six small modules (very small neural networks written by hand, and a sorter). This page shows it live; the explanation below can be read without JavaScript.</p><p lang="fr">Cette page a besoin de JavaScript pour afficher le direct.</p><p lang="en">This page needs JavaScript to show the live console.</p><p><a href="https://github.com/MalikChopa/MalikChopa">GitHub · MalikChopa/MalikChopa</a></p></div></noscript>
 <div id="stage" tabindex="-1">
 <div id="console">
 <canvas id="c" width="640" height="360" role="img" aria-label="Live console of the Sol-0 rover: camera, brain, local map, telemetry."></canvas>
@@ -36,22 +69,22 @@
 </div>
 <div id="panels">
 <button id="pb-cam" class="panel" type="button" data-panel="cam" aria-label="CAM-1 camera"><canvas id="pc-cam" width="322" height="202" aria-hidden="true"></canvas></button>
+<p id="camnote2" class="camnote" data-nosnippet></p>
 <button id="pb-brain" class="panel" type="button" data-panel="brain" aria-label="Brain"><canvas id="pc-brain" width="296" height="200" aria-hidden="true"></canvas></button>
 <div id="g-maptel" class="group"><button id="pb-map" class="panel" type="button" data-panel="map" aria-label="Local map"><canvas id="pc-map" width="122" height="122" aria-hidden="true"></canvas></button><button id="pb-tel" class="panel" type="button" data-panel="tel" aria-label="Telemetry"><canvas id="pc-tel" width="248" height="120" aria-hidden="true"></canvas></button></div>
 <button id="pb-inst" class="panel" type="button" data-panel="inst" aria-label="Arm / scan"><canvas id="pc-inst" width="240" height="120" aria-hidden="true"></canvas></button>
 </div>
-<div id="off" hidden><img id="offimg" alt="Last published console animation of Sol-0 (recorded, not live)" width="640" height="360"><p id="offnote"></p></div>
+<div id="off" hidden><canvas id="offc" width="640" height="360" role="img" aria-label="First image of the last published console animation of Sol-0 (still image, recorded, not live)" hidden></canvas><img id="offimg" alt="Last published console animation of Sol-0 (recorded, not live)" width="640" height="360" hidden><p id="offnote"></p><p><button id="offplay" type="button" hidden><span class="l-fr" lang="fr">Lire l'animation</span><span class="l-en" lang="en">Play the animation</span></button></p></div>
 </div>
-<details id="details"><summary><span class="l-fr" lang="fr">Détails</span><span class="l-en" lang="en">Details</span></summary>
-<p id="season"></p>
-<p><span class="l-fr" lang="fr">SOL d/n : la place de ce sol dans l'année de la planète, comptée à partir de 0 comme les sols (une année = n sols ; en année 1, d est le numéro du sol). DURÉE DU JOUR : longueur du jour simulé de ce sol.</span><span class="l-en" lang="en">SOL d/n: the place of this sol in the planet's year, counted from 0 like the sols (one year = n sols; in year 1, d is the sol's number). DAYLIGHT: length of the simulated day of this sol.</span></p>
-<p><span class="l-fr" lang="fr">DÉBUT DU SOL : le début, en heure UTC, du créneau de 15 minutes de ce sol. L'heure en haut à gauche de CAM-1 est l'horloge du rover.</span><span class="l-en" lang="en">SOL START: the start, in UTC, of the 15-minute slot of this sol. The hour at the top left of CAM-1 is the rover's own clock.</span></p>
-<p><span class="l-fr" lang="fr">Âge de la donnée : l'âge de la plus ancienne chose dessinée, le dernier pas calculé ou la dernière image de CAM-1 (une image n'arrive que tous les quelques pas). Il grandit pendant la pause de fin de sol et quand le moteur se tait.</span><span class="l-en" lang="en">Data age: the age of the oldest thing drawn, the last computed step or the last CAM-1 image (an image only comes every few steps). It grows during the end-of-sol pause and when the engine is silent.</span></p>
-<p id="legend"><span class="l-fr" lang="fr">Connexions : luminosité = |poids x entrée|, pointillé = négatif. Les nœuds sont exacts.</span><span class="l-en" lang="en">Connections: brightness = |weight x input|, dotted = negative. Nodes are exact.</span></p>
-<p><span class="l-fr" lang="fr">Cliquez ou touchez un panneau pour l'agrandir.</span><span class="l-en" lang="en">Click or tap a panel to enlarge it.</span></p>
-<p><a id="toabout" href="#en/about"><span class="l-fr" lang="fr">Comment ça marche →</span><span class="l-en" lang="en">How it works →</span></a></p>
-</details>
+<p id="camnote" class="camnote" data-nosnippet></p>
 <p id="summary" class="sr" aria-live="polite"></p>
+</section>
+<section id="view-map" aria-labelledby="h-map" data-nosnippet>
+<h2 id="h-map" class="sr" tabindex="-1"><span class="l-fr" lang="fr">Carte</span><span class="l-en" lang="en">Map</span></h2>
+<div id="mapbar"><p id="maplabel"></p><span class="mapbtns"><span id="mapzoom"></span><button id="map-out" type="button" aria-label="Zoom out">&minus;</button><button id="map-in" type="button" aria-label="Zoom in">+</button><button id="map-reset" type="button"><span class="l-fr" lang="fr">Recentrer</span><span class="l-en" lang="en">Reset</span></button><button id="map-whole" type="button" hidden><span class="l-fr" lang="fr">Vue d'ensemble</span><span class="l-en" lang="en">Overview</span></button></span></div>
+<div id="mapview" tabindex="0" role="application" aria-label="Published map of the area explored by Sol-0" aria-describedby="maphelp"><div id="mapwrap"><canvas id="mapimg" width="1" height="1" aria-hidden="true"></canvas><canvas id="maptrail" width="1" height="1" aria-hidden="true"></canvas></div></div>
+<p id="mapnote"></p>
+<p id="maphelp"><span class="l-fr" lang="fr">La carte publiée : la zone explorée à la fin d'un sol (sombre = jamais vu), telle que publiée sur GitHub (quelques fois par jour ; jusqu'à 15 min de retard). « il y a » compte depuis l'heure de ce sol dans le status.json publié. Glissez pour déplacer, molette ou pincement pour zoomer ; touches : flèches, + et −, 0 pour recentrer.</span><span class="l-en" lang="en">The published map: the explored area at the end of a sol (dark = never seen), as published on GitHub (a few times a day; up to 15 min late). « ago » counts from that sol's time in the published status.json. Drag to move, wheel or pinch to zoom; keys: arrows, + and −, 0 to reset.</span></p>
 </section>
 <section id="view-about" aria-labelledby="h-about">
 <h2 id="h-about" class="sr" tabindex="-1"><span class="l-fr" lang="fr">Comment ça marche</span><span class="l-en" lang="en">How it works</span></h2>
@@ -778,9 +811,19 @@
 <div id="ov-body"><canvas id="ov-c" width="322" height="202" aria-hidden="true"></canvas></div>
 <p id="ov-hint" hidden><span class="l-fr" lang="fr">Tournez l'appareil pour agrandir.</span><span class="l-en" lang="en">Rotate your device for a larger view.</span></p>
 </dialog>
+<dialog id="intro" aria-labelledby="intro-title" aria-describedby="intro-label">
+<div id="intro-box">
+<h2 id="intro-title" class="sr"><span class="l-fr" lang="fr">Bande-annonce de Sol-0, illustration dessinée, 39 secondes</span><span class="l-en" lang="en">Sol-0 trailer, drawn illustration, 39 seconds</span></h2>
+<p id="intro-label"><span class="l-fr" lang="fr">ILLUSTRATION : bande-annonce dessinée, pas une image de la simulation.</span><span class="l-en" lang="en">ILLUSTRATION: a drawn trailer, not footage from the simulation.</span></p>
+<video id="intro-v" width="640" height="360" muted playsinline preload="none" aria-labelledby="intro-title"></video>
+<p class="introbtns"><button id="intro-play" type="button" hidden><span class="l-fr" lang="fr">Lancer la cinématique</span><span class="l-en" lang="en">Play the intro</span></button><button id="intro-snd" type="button"><span id="intro-snd-on"><span class="l-fr" lang="fr">Activer le son</span><span class="l-en" lang="en">Sound on</span></span><span id="intro-snd-off" hidden><span class="l-fr" lang="fr">Couper le son</span><span class="l-en" lang="en">Sound off</span></span></button><button id="intro-skip" type="button"><span class="l-fr" lang="fr">Passer</span><span class="l-en" lang="en">Skip</span></button></p>
+</div>
+</dialog>
 <script src="console.js"></script>
 <script src="live.js"></script>
 <script src="layout.js"></script>
+<script src="mapview.js"></script>
 <script src="app.js"></script>
+<script src="intro.js"></script>
 </body>
 </html>

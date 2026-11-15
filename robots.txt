@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://sol0.fr/sitemap.xml
